@@ -24,8 +24,15 @@ To build both AVIRT and the dummy Audio Path out-of-tree for [AGL](http://docs.a
 $ ./make_agl.sh ${XDS_SDK_ID}
 ```
 ### In tree
+To build in tree, the AVIRT Driver and required AudioPath modules can be turned on by setting to ```<M>```. The drivers can be found here:
 ```
-$ TODO
+$ make menuconfig
+
+# Navigate to: Device Drivers--->Staging Drivers--->AVIRT Support
+```
+Finally build the kernel with the configuration selected by making.
+```
+$ make
 ```
 
 ## Running
