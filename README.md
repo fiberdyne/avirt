@@ -1,6 +1,5 @@
 Alsa Virtual Sound Driver
 --------------------------
-[![pipeline status](https://git.fiberdyne.com.au/JOSHANNE/kmodule_development/badges/master/pipeline.svg)](https://git.fiberdyne.com.au/JOSHANNE/kmodule_development/commits/master)
 
 The ALSA Virtual Sound Driver (AVIRT) aims to provide a Linux kernel solution to the issue of audio routing in kernel-space, as well as security per-stream, and dynamic configuration of streams at the kernel level.
 
