@@ -1,0 +1,6 @@
+*.o*
+*.ko*
+*.symvers
+*.mod*
+*.mk*
+build*/**

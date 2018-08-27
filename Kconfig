@@ -1,0 +1,20 @@
+menuconfig AVIRT
+        tristate "AVIRT support"
+        default n
+        ---help---
+	  Say Y here if you want to enable AVIRT support.
+	  This driver needs at least one additional audio path in
+	  order to establish audio routing.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called avirt_core.
+
+          If in doubt, say N here.
+
+
+
+if AVIRT
+
+source "drivers/staging/avirt/dummy/Kconfig"
+
+endif

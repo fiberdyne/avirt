@@ -1,0 +1,12 @@
+#
+# AVIRT Dummy Audio Path
+#
+
+config AVIRT_DUMMYAP
+	tristate "DummyAP"
+	select SND_PCM
+	---help---
+	  Say Y here if you want to add dummy audio path.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called avirt_dummyap.
