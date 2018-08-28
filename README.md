@@ -24,7 +24,7 @@ To build both AVIRT and the dummy Audio Path out-of-tree for [AGL](http://docs.a
 $ ./make_agl.sh ${XDS_SDK_ID}
 ```
 ### In tree
-To build in tree, the AVIRT Driver and required AudioPath modules can be turned on by setting to ```<M>```. The drivers can be found here:
+To build in tree, use the [Fiberdyne Linux fork](https://github.com/fiberdyne/linux), which will automatically clone the AVIRT Driver and required AudioPath modules to the `drivers/staging` directory. You can then turn AVIRT Support on by setting to `<M>`. The drivers can be found here:
 ```
 $ make menuconfig
 
