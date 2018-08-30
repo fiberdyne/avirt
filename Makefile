@@ -14,3 +14,22 @@ ccflags-y += -I${CCFLAGS_AVIRT}
 
 $(info $(KERNELRELEASE))
 obj-$(CONFIG_AVIRT_DUMMYAP)	+= dummy/
+
+###
+# For out-of-tree building
+###
+ifdef PKG_CONFIG_SYSROOT_DIR
+	# AGL SDK kernel src path
+	KERNEL_SRC=$(PKG_CONFIG_SYSROOT_DIR)/usr/src/kernel
+else
+	# General Linux distro kernel src path
+	KERNEL_SRC=/lib/modules/$(shell uname -r)/build
+endif
+
+all:
+	CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y CONFIG_AVIRT_DUMMYAP=m \
+	make -C $(KERNEL_SRC) M=$(PWD)
+
+clean:
+	make -C $(KERNEL_SRC) M=$(PWD) clean
+
