@@ -375,7 +375,6 @@ struct snd_pcm_ops pcm_ops = {
 	.copy_user = pcm_copy_user,
 	.copy_kernel = pcm_copy_kernel,
 	.page = snd_pcm_lib_get_vmalloc_page,
-	.mmap = snd_pcm_lib_mmap_vmalloc,
 	.ack = pcm_ack,
 
 };
