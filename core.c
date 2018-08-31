@@ -64,7 +64,7 @@ static struct avirt_coreinfo coreinfo = {
 	.pcm_buff_complete = pcm_buff_complete_cb,
 };
 
-static struct list_head audiopath_list;
+static LIST_HEAD(audiopath_list);
 
 /**
  * avirt_probe - Register ALSA soundcard
@@ -408,9 +408,6 @@ static int __init core_init(void)
 
 	pr_info("Alsa Virtual Sound Driver avirt-%d.%d.%d\n",
 		coreinfo.version[0], coreinfo.version[1], coreinfo.version[2]);
-
-	// Initialize audiopaths linked list
-	INIT_LIST_HEAD(&audiopath_list);
 
 	err = platform_driver_register(&avirt_driver);
 	if (err < 0)
