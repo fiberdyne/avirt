@@ -145,9 +145,8 @@ static int avirt_probe(struct platform_device *devptr)
  */
 static int avirt_remove(struct platform_device *devptr)
 {
-	avirt_alsa_deregister();
-
-	return 0;
+	DPRINTK();
+	return avirt_alsa_deregister();
 }
 
 static struct platform_driver avirt_driver = {

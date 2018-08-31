@@ -203,17 +203,17 @@ int avirt_alsa_register(struct platform_device *devptr)
  */
 int avirt_alsa_deregister(void)
 {
+	CHK_NULL(_driver->card);
 	snd_card_free(_driver->card);
-
-	if (_driver->playback.config)
-		kfree(_driver->playback.config);
-	if (_driver->playback.streams)
-		kfree(_driver->playback.streams);
-	if (_driver->capture.config)
-		kfree(_driver->capture.config);
-	if (_driver->capture.streams)
-		kfree(_driver->capture.streams);
-
+	CHK_NULL(_driver->playback.config);
+	kfree(_driver->playback.config);
+	CHK_NULL(_driver->playback.streams);
+	kfree(_driver->playback.streams);
+	CHK_NULL(_driver->capture.config);
+	kfree(_driver->capture.config);
+	CHK_NULL(_driver->capture.streams);
+	kfree(_driver->capture.streams);
+	CHK_NULL(_driver);
 	kfree(_driver);
 
 	return 0;
