@@ -235,12 +235,10 @@ static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
  */
 static snd_pcm_uframes_t pcm_pointer(struct snd_pcm_substream *substream)
 {
-	struct avirt_alsa_dev_group *group;
+	// Do additional Audio Path 'pointer' callback
+	DO_AUDIOPATH_CB(pointer, substream);
 
-	group = avirt_alsa_get_dev_group(substream->stream);
-	CHK_NULL(group);
-
-	return group->streams[substream->pcm->device].hw_frame_idx;
+	return 0;
 }
 
 /**
