@@ -23,7 +23,6 @@ typedef int (*avirt_buff_complete)(struct snd_pcm_substream *substream);
 struct avirt_audiopath {
 	const char *name;
 	unsigned version[3];
-	int value;
 	struct snd_pcm_hardware *hw;
 	struct snd_pcm_ops *pcm_ops;
 	unsigned blocksize;

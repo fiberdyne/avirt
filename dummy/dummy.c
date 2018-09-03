@@ -246,7 +246,6 @@ static struct snd_pcm_hardware dummyap_hw = {
 static struct avirt_audiopath dummyap_module = {
 	.name = "Dummy Audio Path",
 	.version = { 0, 0, 1 },
-	.value = 10,
 	.hw = &dummyap_hw,
 	.pcm_ops = &dummyap_pcm_ops,
 	.blocksize = DUMMY_BLOCKSIZE,
