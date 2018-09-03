@@ -78,31 +78,6 @@ static int alloc_dev_config(struct avirt_alsa_dev_config **devconfig,
 	return 0;
 }
 
-/**
- * alloc_dev_streams - Initializes ALSA device substream buffers
- * @return: 0 on success or error code otherwise
- */
-static int alloc_dev_streams(struct avirt_alsa_dev_config *config,
-			     struct avirt_alsa_stream **streams,
-			     unsigned numdevices)
-{
-	unsigned i;
-
-	if (numdevices == 0)
-		return 0;
-
-	*streams = kzalloc(sizeof(struct avirt_alsa_stream) * numdevices,
-			   GFP_KERNEL);
-
-	if (!(*streams))
-		return -EFAULT;
-
-	for (i = 0; i < numdevices; i++)
-		(*streams)[i].hw_frame_idx = 0;
-
-	return 0;
-}
-
 struct avirt_alsa_dev_group *avirt_alsa_get_dev_group(int direction)
 {
 	if (!_driver) {
@@ -155,8 +130,6 @@ int avirt_alsa_configure_pcm(struct avirt_alsa_dev_config *config,
 
 	group->devices = numdevices;
 
-	CHK_ERR(alloc_dev_streams(group->config, &group->streams,
-				  group->devices));
 	return 0;
 }
 
@@ -207,12 +180,8 @@ int avirt_alsa_deregister(void)
 	snd_card_free(_driver->card);
 	CHK_NULL(_driver->playback.config);
 	kfree(_driver->playback.config);
-	CHK_NULL(_driver->playback.streams);
-	kfree(_driver->playback.streams);
 	CHK_NULL(_driver->capture.config);
 	kfree(_driver->capture.config);
-	CHK_NULL(_driver->capture.streams);
-	kfree(_driver->capture.streams);
 	CHK_NULL(_driver);
 	kfree(_driver);
 
@@ -229,27 +198,8 @@ int avirt_alsa_deregister(void)
  */
 int pcm_buff_complete_cb(struct snd_pcm_substream *substream)
 {
-	int maxframe, deviceid;
-	struct avirt_audiopath *audiopath;
-	struct avirt_alsa_dev_group *group;
-
-	deviceid = substream->pcm->device;
-
-	group = avirt_alsa_get_dev_group(substream->stream);
-	CHK_NULL(group);
-
-	audiopath = avirt_get_current_audiopath();
-	CHK_NULL_V(audiopath, "Cannot find Audio Path!");
-
-	group->streams[deviceid].hw_frame_idx += audiopath->blocksize;
-	maxframe = audiopath->blocksize * audiopath->hw->periods_max;
-
-	// Once the index reaches the DMA buffer boundary, reset it to 0
-	if (group->streams[deviceid].hw_frame_idx >= maxframe)
-		group->streams[deviceid].hw_frame_idx = 0;
-
 	// Notify ALSA middle layer of the elapsed period boundary
-	snd_pcm_period_elapsed(group->streams[deviceid].substream);
+	snd_pcm_period_elapsed(substream);
 
 	return 0;
 }

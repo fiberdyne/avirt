@@ -217,16 +217,9 @@ static int pcm_prepare(struct snd_pcm_substream *substream)
  */
 static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	struct avirt_alsa_dev_group *group;
-
-	group = avirt_alsa_get_dev_group(substream->stream);
-	CHK_NULL(group);
-
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
-		group->streams[substream->pcm->device].substream = substream;
-		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 		break;

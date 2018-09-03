@@ -11,6 +11,7 @@
 #define __AVIRT_ALSA_H__
 
 #include <linux/platform_device.h>
+#include <sound/pcm.h>
 
 #define MAX_NAME_LEN 32
 
@@ -54,19 +55,10 @@ struct avirt_alsa_dev_config {
 };
 
 /**
- * Stream maintainance
- */
-struct avirt_alsa_stream {
-	int hw_frame_idx;
-	struct snd_pcm_substream *substream;
-};
-
-/**
  * Collection of devices
  */
 struct avirt_alsa_dev_group {
 	struct avirt_alsa_dev_config *config;
-	struct avirt_alsa_stream *streams;
 	int devices;
 	int buffersize;
 };
