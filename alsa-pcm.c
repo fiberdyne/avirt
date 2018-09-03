@@ -188,17 +188,6 @@ static int pcm_hw_free(struct snd_pcm_substream *substream)
  */
 static int pcm_prepare(struct snd_pcm_substream *substream)
 {
-	struct avirt_alsa_dev_group *group;
-	struct snd_pcm_runtime *runtime = substream->runtime;
-
-	group = avirt_alsa_get_dev_group(substream->stream);
-	CHK_NULL(group);
-
-	// Reset HW buffer index for the device
-	group->streams[substream->pcm->device].hw_frame_idx = 0;
-
-	group->buffersize = frames_to_bytes(runtime, runtime->buffer_size);
-
 	// Do additional Audio Path 'prepare' callback
 	DO_AUDIOPATH_CB(prepare, substream);
 

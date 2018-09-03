@@ -60,7 +60,6 @@ struct avirt_alsa_dev_config {
 struct avirt_alsa_dev_group {
 	struct avirt_alsa_dev_config *config;
 	int devices;
-	int buffersize;
 };
 
 /**
