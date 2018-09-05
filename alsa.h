@@ -18,33 +18,36 @@
 #define PRINT_ERR(errno, errmsg, ...) \
 	pr_err("[%s()] %s [ERRNO:%d]", __func__, errmsg, ##__VA_ARGS__, errno);
 
-#define CHK_ERR(errno)                \
-	do {                          \
-		if (errno < 0)        \
-			return errno; \
+#define CHK_ERR(errno)                  \
+	do {                            \
+		if ((errno) < 0)        \
+			return (errno); \
 	} while (0)
 
-#define CHK_ERR_V(errno, errmsg, ...)                           \
-	do {                                                    \
-		if (errno < 0) {                                \
-			PRINT_ERR(errno, errmsg, ##__VA_ARGS__) \
-			return errno;                           \
-		}                                               \
+#define CHK_ERR_V(errno, errmsg, ...)                               \
+	do {                                                        \
+		if ((errno) < 0) {                                  \
+			PRINT_ERR((errno), (errmsg), ##__VA_ARGS__) \
+			return (errno);                             \
+		}                                                   \
 	} while (0)
 
 #define CHK_NULL(x)                     \
 	do {                            \
-		if (!x)                 \
+		if (!(x))               \
 			return -EFAULT; \
 	} while (0)
 
-#define CHK_NULL_V(x, errmsg, ...)                               \
-	do {                                                     \
-		if (!x) {                                        \
-			PRINT_ERR(EFAULT, errmsg, ##__VA_ARGS__) \
-			return -EFAULT;                          \
-		}                                                \
+#define CHK_NULL_V(x, errmsg, ...)                                 \
+	do {                                                       \
+		if (!(x)) {                                        \
+			PRINT_ERR(EFAULT, (errmsg), ##__VA_ARGS__) \
+			return -EFAULT;                            \
+		}                                                  \
 	} while (0)
+
+extern struct avirt_coreinfo coreinfo;
+extern struct snd_pcm_ops pcm_ops;
 
 /**
  * avirt_alsa_configure_pcm- Configure the PCM device
@@ -54,7 +57,7 @@
  * @return: 0 on success or error code otherwise
  */
 int avirt_alsa_configure_pcm(struct avirt_alsa_devconfig *config, int direction,
-			     unsigned numdevices);
+			     unsigned int numdevices);
 
 /**
  * avirt_alsa_register - Registers the ALSA driver
@@ -82,7 +85,7 @@ struct avirt_alsa_group *avirt_alsa_get_group(int direction);
  * pcm_buff_complete_cb - PCM buffer complete callback
  * @substream: pointer to ALSA PCM substream
  * @return 0 on success or error code otherwise
- * 
+ *
  * This should be called from a child Audio Path once it has finished processing
  * the PCM buffer
  */

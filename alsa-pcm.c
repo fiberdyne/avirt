@@ -15,7 +15,7 @@
 		ap = avirt_get_current_audiopath();                  \
 		CHK_NULL_V(ap, "Cannot find Audio Path!");           \
 		if (ap->pcm_ops->callback) {                         \
-			return ap->pcm_ops->callback(substream,      \
+			return ap->pcm_ops->callback((substream),    \
 						     ##__VA_ARGS__); \
 		}                                                    \
 	} while (0)
@@ -31,7 +31,7 @@ static int configure_pcm(struct snd_pcm_substream *substream)
 	struct avirt_audiopath *audiopath;
 	struct avirt_alsa_group *group;
 	struct snd_pcm_hardware *hw;
-	unsigned bytes_per_sample = 0, blocksize = 0;
+	unsigned int bytes_per_sample = 0, blocksize = 0;
 
 	audiopath = avirt_get_current_audiopath();
 	CHK_NULL_V(audiopath, "Cannot find Audio Path!");
@@ -43,9 +43,9 @@ static int configure_pcm(struct snd_pcm_substream *substream)
 	memcpy(hw, audiopath->hw, sizeof(struct snd_pcm_hardware));
 	pr_info("%s %d %d", __func__, blocksize, hw->periods_max);
 
-	if (hw->formats == SNDRV_PCM_FMTBIT_S16_LE)
+	if (hw->formats == SNDRV_PCM_FMTBIT_S16_LE) {
 		bytes_per_sample = 2;
-	else {
+	} else {
 		pr_err("[%s] PCM only supports SNDRV_PCM_FMTBIT_S16_LE",
 		       __func__);
 		return -EINVAL;
@@ -178,11 +178,11 @@ static int pcm_hw_free(struct snd_pcm_substream *substream)
 /**
  * pcm_prepare - Implements 'prepare' callback for PCM middle layer
  * @substream: pointer to ALSA PCM substream
- * 
+ *
  * The format rate, sample rate, etc., can be set here. This callback can be
  * called many times at each setup. This function is also used to handle overrun
  * and underrun conditions when we try and resync the DMA (if we're using DMA).
- * 
+ *
  * Returns 0 on success or error code otherwise.
  */
 static int pcm_prepare(struct snd_pcm_substream *substream)
@@ -197,10 +197,10 @@ static int pcm_prepare(struct snd_pcm_substream *substream)
  * pcm_trigger - Implements 'trigger' callback for PCM middle layer
  * @substream: pointer to ALSA PCM substream
  * @cmd: action to be performed (start or stop)
- * 
+ *
  * This is called when the PCM is started, stopped or paused. The action
  * indicated action is specified in the second argument, SNDRV_PCM_TRIGGER_XXX
- * 
+ *
  * Returns 0 on success or error code otherwise.
  */
 static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
@@ -225,11 +225,11 @@ static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 /**
  * pcm_pointer - Implements 'pointer' callback for PCM middle layer
  * @substream: pointer to ALSA PCM substream
- * 
+ *
  * This gets called when the user space needs a DMA buffer index. IO errors will
  * be generated if the index does not increment, or drives beyond the frame
  * threshold of the buffer itself.
- * 
+ *
  * Returns the current hardware buffer frame index.
  */
 static snd_pcm_uframes_t pcm_pointer(struct snd_pcm_substream *substream)
@@ -247,9 +247,9 @@ static snd_pcm_uframes_t pcm_pointer(struct snd_pcm_substream *substream)
  * @audio_ts
  * @audio_tstamp_config
  * @audio_tstamp_report
- * 
+ *
  * Generic way to get system timestamp and audio timestamp info
- * 
+ *
  * Returns 0 on success or error code otherwise
  */
 static int pcm_get_time_info(
@@ -276,9 +276,9 @@ static int pcm_get_time_info(
  * @pos: The offset in the DMA
  * @src: Audio PCM data from the user space
  * @count:
- * 
+ *
  * This is where we need to copy user audio PCM data into the sound driver
- * 
+ *
  * Returns 0 on success or error code otherwise.
  *
  */
@@ -305,9 +305,9 @@ static int pcm_copy_user(struct snd_pcm_substream *substream, int channel,
  * @pos: The offset in the DMA
  * @src: Audio PCM data from the user space
  * @count:
- * 
+ *
  * This is where we need to copy kernel audio PCM data into the sound driver
- * 
+ *
  * Returns 0 on success or error code otherwise.
  *
  */
@@ -321,9 +321,9 @@ static int pcm_copy_kernel(struct snd_pcm_substream *substream, int channel,
 /**
  * pcm_ack - Implements 'ack' callback for PCM middle layer
  * @substream: pointer to ALSA PCM substream
- * 
+ *
  * This is where we need to ack
- * 
+ *
  * Returns 0 on success or error code otherwise.
  *
  */
@@ -355,5 +355,4 @@ struct snd_pcm_ops pcm_ops = {
 	.copy_kernel = pcm_copy_kernel,
 	.page = snd_pcm_lib_get_vmalloc_page,
 	.ack = pcm_ack,
-
 };

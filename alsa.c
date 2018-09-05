@@ -13,10 +13,7 @@
 
 #include "alsa.h"
 
-extern struct avirt_coreinfo coreinfo;
-
-static struct snd_card *card = NULL;
-extern struct snd_pcm_ops pcm_ops;
+static struct snd_card *card;
 
 /**
  * pcm_constructor - Constructs the ALSA PCM middle devices for this driver
@@ -62,12 +59,12 @@ static int pcm_constructor(struct snd_card *card)
  */
 static int alloc_dev_config(struct avirt_alsa_devconfig **devconfig,
 			    struct avirt_alsa_devconfig *userconfig,
-			    unsigned numdevices)
+			    unsigned int numdevices)
 {
 	if (numdevices == 0)
 		return 0;
 
-	*devconfig = kzalloc(sizeof(struct avirt_alsa_devconfig) * numdevices,
+	*devconfig = kzalloc(sizeof(*devconfig) * numdevices,
 			     GFP_KERNEL);
 	if (!(*devconfig))
 		return -ENOMEM;
@@ -100,7 +97,7 @@ struct avirt_alsa_group *avirt_alsa_get_group(int direction)
  * @return: 0 on success or error code otherwise
  */
 int avirt_alsa_configure_pcm(struct avirt_alsa_devconfig *config, int direction,
-			     unsigned numdevices)
+			     unsigned int numdevices)
 {
 	struct avirt_alsa_group *group;
 
@@ -166,7 +163,7 @@ int avirt_alsa_deregister(void)
  * pcm_buff_complete_cb - PCM buffer complete callback
  * @substreamid: pointer to ALSA PCM substream
  * @return 0 on success or error code otherwise
- * 
+ *
  * This should be called from a child Audio Path once it has finished processing
  * the pcm buffer
  */

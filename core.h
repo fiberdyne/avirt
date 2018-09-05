@@ -16,8 +16,8 @@
 
 /**
  * PCM buffer complete callback
- * 
- * These are called from the audiopath when a PCM buffer has completed, and 
+ *
+ * These are called from the audiopath when a PCM buffer has completed, and
  * new data can be submitted/retrieved
  */
 typedef int (*avirt_buff_complete)(struct snd_pcm_substream *substream);
@@ -27,10 +27,10 @@ typedef int (*avirt_buff_complete)(struct snd_pcm_substream *substream);
  */
 struct avirt_audiopath {
 	const char *name;
-	unsigned version[3];
+	unsigned int version[3];
 	struct snd_pcm_hardware *hw;
 	struct snd_pcm_ops *pcm_ops;
-	unsigned blocksize;
+	unsigned int blocksize;
 
 	void *context;
 };
@@ -55,7 +55,7 @@ struct avirt_alsa_group {
  * AVIRT core info
  */
 struct avirt_coreinfo {
-	unsigned version[3];
+	unsigned int version[3];
 
 	struct avirt_alsa_group playback;
 	struct avirt_alsa_group capture;

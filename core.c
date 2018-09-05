@@ -25,17 +25,17 @@ MODULE_LICENSE("GPL v2");
 #define DEFAULT_FILE_PERMS 0644
 
 /* Number of playback devices to create (max = MAX_PCM_DEVS) */
-static unsigned playback_num = 0;
+static unsigned int playback_num;
 /* Number of capture devices to create (max = MAX_PCM_DEVS) */
-static unsigned capture_num = 0;
+static unsigned int capture_num;
 /* Names per playback device */
 static char *playback_names[MAX_PCM_DEVS];
 /* Names per capture device */
 static char *capture_names[MAX_PCM_DEVS];
 /* Channels per playback device */
-static unsigned playback_chans[MAX_PCM_DEVS];
+static unsigned int playback_chans[MAX_PCM_DEVS];
 /* Channels per capture device */
-static unsigned capture_chans[MAX_PCM_DEVS];
+static unsigned int capture_chans[MAX_PCM_DEVS];
 
 module_param(playback_num, int, DEFAULT_FILE_PERMS);
 MODULE_PARM_DESC(playback_num,
@@ -85,7 +85,7 @@ static int avirt_probe(struct platform_device *devptr)
 	// Set up playback
 	for (i = 0; i < playback_num; i++) {
 		if (!playback_names[i]) {
-			pr_err("Playback config devicename is NULL for idx=%d\n",
+			pr_err("Playback config dev name is NULL for idx=%d\n",
 			       i);
 			return -EINVAL;
 		}
@@ -249,6 +249,7 @@ static ssize_t audiopath_version_show(struct avirt_audiopath_obj *audiopath_obj,
 				      char *buf)
 {
 	struct avirt_audiopath *audiopath = audiopath_obj->path;
+
 	return sprintf(buf, "%d.%d.%d\n", audiopath->version[0],
 		       audiopath->version[1], audiopath->version[2]);
 }
@@ -310,7 +311,7 @@ static void destroy_avirt_audiopath_obj(struct avirt_audiopath_obj *p)
  * avirt_get_current_audiopath - retrieves the current Audio Path
  * @return: Current Audio Path
  */
-struct avirt_audiopath *avirt_get_current_audiopath()
+struct avirt_audiopath *avirt_get_current_audiopath(void)
 {
 	struct avirt_audiopath_obj *ap_obj = list_entry(
 		audiopath_list.next, struct avirt_audiopath_obj, list);
