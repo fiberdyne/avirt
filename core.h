@@ -12,6 +12,8 @@
 
 #include <sound/pcm.h>
 
+#define MAX_NAME_LEN 32
+
 /**
  * PCM buffer complete callback
  * 
@@ -20,6 +22,9 @@
  */
 typedef int (*avirt_buff_complete)(struct snd_pcm_substream *substream);
 
+/**
+ * AVIRT Audio Path info
+ */
 struct avirt_audiopath {
 	const char *name;
 	unsigned version[3];
@@ -30,10 +35,30 @@ struct avirt_audiopath {
 	void *context;
 };
 
+/*
+ * ALSA Substream device configuration
+ */
+struct avirt_alsa_devconfig {
+	const char devicename[MAX_NAME_LEN];
+	int channels;
+};
+
+/**
+ * Collection of ALSA devices
+ */
+struct avirt_alsa_group {
+	struct avirt_alsa_devconfig *config;
+	int devices;
+};
+
+/**
+ * AVIRT core info
+ */
 struct avirt_coreinfo {
 	unsigned version[3];
-	unsigned playback_num;
-	unsigned capture_num;
+
+	struct avirt_alsa_group playback;
+	struct avirt_alsa_group capture;
 
 	avirt_buff_complete pcm_buff_complete;
 };

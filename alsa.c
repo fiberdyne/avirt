@@ -12,10 +12,10 @@
 #include <sound/initval.h>
 
 #include "alsa.h"
-#include "core.h"
 
-static struct avirt_alsa_driver *_driver = NULL;
+extern struct avirt_coreinfo coreinfo;
 
+static struct snd_card *card = NULL;
 extern struct snd_pcm_ops pcm_ops;
 
 /**
@@ -29,28 +29,28 @@ static int pcm_constructor(struct snd_card *card)
 	int i;
 
 	// Allocate Playback PCM instances
-	for (i = 0; i < _driver->playback.devices; i++) {
+	for (i = 0; i < coreinfo.playback.devices; i++) {
 		CHK_ERR(snd_pcm_new(card,
-				    _driver->playback.config[i].devicename, i,
+				    coreinfo.playback.config[i].devicename, i,
 				    1, 0, &pcm));
 
 		/** Register driver callbacks */
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &pcm_ops);
 
 		pcm->info_flags = 0;
-		strcpy(pcm->name, _driver->playback.config[i].devicename);
+		strcpy(pcm->name, coreinfo.playback.config[i].devicename);
 	}
 
 	// Allocate Capture PCM instances
-	for (i = 0; i < _driver->capture.devices; i++) {
-		CHK_ERR(snd_pcm_new(card, _driver->capture.config[i].devicename,
+	for (i = 0; i < coreinfo.capture.devices; i++) {
+		CHK_ERR(snd_pcm_new(card, coreinfo.capture.config[i].devicename,
 				    i, 0, 1, &pcm));
 
 		/** Register driver callbacks */
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &pcm_ops);
 
 		pcm->info_flags = 0;
-		strcpy(pcm->name, _driver->capture.config[i].devicename);
+		strcpy(pcm->name, coreinfo.capture.config[i].devicename);
 	}
 
 	return 0;
@@ -60,55 +60,36 @@ static int pcm_constructor(struct snd_card *card)
  * alloc_dev_config - Allocates memory for ALSA device configuration
  * @return: 0 on success or error code otherwise
  */
-static int alloc_dev_config(struct avirt_alsa_dev_config **devconfig,
-			    struct avirt_alsa_dev_config *userconfig,
+static int alloc_dev_config(struct avirt_alsa_devconfig **devconfig,
+			    struct avirt_alsa_devconfig *userconfig,
 			    unsigned numdevices)
 {
 	if (numdevices == 0)
 		return 0;
 
-	*devconfig = kzalloc(sizeof(struct avirt_alsa_dev_config) * numdevices,
+	*devconfig = kzalloc(sizeof(struct avirt_alsa_devconfig) * numdevices,
 			     GFP_KERNEL);
 	if (!(*devconfig))
 		return -ENOMEM;
 
 	memcpy(*devconfig, userconfig,
-	       sizeof(struct avirt_alsa_dev_config) * numdevices);
+	       sizeof(struct avirt_alsa_devconfig) * numdevices);
 
 	return 0;
 }
 
-struct avirt_alsa_dev_group *avirt_alsa_get_dev_group(int direction)
+struct avirt_alsa_group *avirt_alsa_get_group(int direction)
 {
-	if (!_driver) {
-		pr_err("[%s] _driver is NULL", __func__);
-		return NULL;
-	}
-
 	switch (direction) {
 	case SNDRV_PCM_STREAM_PLAYBACK:
-		return &_driver->playback;
+		return &coreinfo.playback;
 	case SNDRV_PCM_STREAM_CAPTURE:
-		return &_driver->capture;
+		return &coreinfo.capture;
 	default:
 		pr_err("[%s] Direction must be SNDRV_PCM_STREAM_XXX!",
 		       __func__);
 		return NULL;
 	}
-}
-
-/**
- * avirt_alsa_init - Initializes the ALSA driver
- * @return: 0 on success or error code otherwise
- */
-int avirt_alsa_init()
-{
-	// Allocate memory for the driver
-	_driver = kzalloc(sizeof(struct avirt_alsa_driver), GFP_KERNEL);
-	if (!_driver)
-		return -ENOMEM;
-
-	return 0;
 }
 
 /**
@@ -118,12 +99,12 @@ int avirt_alsa_init()
  * @numdevices: Number of devices (array length)
  * @return: 0 on success or error code otherwise
  */
-int avirt_alsa_configure_pcm(struct avirt_alsa_dev_config *config,
-			     int direction, unsigned numdevices)
+int avirt_alsa_configure_pcm(struct avirt_alsa_devconfig *config, int direction,
+			     unsigned numdevices)
 {
-	struct avirt_alsa_dev_group *group;
+	struct avirt_alsa_group *group;
 
-	group = avirt_alsa_get_dev_group(direction);
+	group = avirt_alsa_get_group(direction);
 	CHK_NULL(group);
 
 	CHK_ERR(alloc_dev_config(&group->config, config, numdevices));
@@ -140,11 +121,7 @@ int avirt_alsa_configure_pcm(struct avirt_alsa_dev_config *config,
  */
 int avirt_alsa_register(struct platform_device *devptr)
 {
-	struct snd_card *card;
 	static struct snd_device_ops device_ops;
-
-	if (!_driver)
-		return -EFAULT;
 
 	// Create the card instance
 	CHK_ERR_V(snd_card_new(&devptr->dev, SNDRV_DEFAULT_IDX1, "avirt",
@@ -154,10 +131,9 @@ int avirt_alsa_register(struct platform_device *devptr)
 	strcpy(card->driver, "avirt-alsa-device");
 	strcpy(card->shortname, "avirt");
 	strcpy(card->longname, "A virtual sound card driver for ALSA");
-	_driver->card = card;
 
 	// Create new sound device
-	CHK_ERR_V((snd_device_new(card, SNDRV_DEV_LOWLEVEL, _driver,
+	CHK_ERR_V((snd_device_new(card, SNDRV_DEV_LOWLEVEL, &coreinfo,
 				  &device_ops)),
 		  "Failed to create sound device");
 
@@ -176,14 +152,12 @@ int avirt_alsa_register(struct platform_device *devptr)
  */
 int avirt_alsa_deregister(void)
 {
-	CHK_NULL(_driver->card);
-	snd_card_free(_driver->card);
-	CHK_NULL(_driver->playback.config);
-	kfree(_driver->playback.config);
-	CHK_NULL(_driver->capture.config);
-	kfree(_driver->capture.config);
-	CHK_NULL(_driver);
-	kfree(_driver);
+	CHK_NULL(card);
+	snd_card_free(card);
+	CHK_NULL(coreinfo.playback.config);
+	kfree(coreinfo.playback.config);
+	CHK_NULL(coreinfo.capture.config);
+	kfree(coreinfo.capture.config);
 
 	return 0;
 }

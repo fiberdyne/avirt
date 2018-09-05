@@ -59,7 +59,7 @@ static struct avirt_core {
 	struct platform_device *platform_dev;
 } core;
 
-static struct avirt_coreinfo coreinfo = {
+struct avirt_coreinfo coreinfo = {
 	.version = { 0, 0, 1 },
 	.pcm_buff_complete = pcm_buff_complete_cb,
 };
@@ -73,21 +73,14 @@ static LIST_HEAD(audiopath_list);
  */
 static int avirt_probe(struct platform_device *devptr)
 {
-	// struct avirt_alsa_dev_config capture_config[MAX_PCM_DEVS];
-	struct avirt_alsa_dev_config playback_config[MAX_PCM_DEVS];
+	// struct avirt_alsa_devconfig capture_config[MAX_PCM_DEVS];
+	struct avirt_alsa_devconfig playback_config[MAX_PCM_DEVS];
 	int err = 0, i = 0;
 
 	if (playback_num == 0 && capture_num == 0) {
 		pr_err("playback_num or capture_num must be greater than 0!\n");
 		return -EINVAL;
 	}
-
-	coreinfo.playback_num = playback_num;
-	coreinfo.capture_num = capture_num;
-
-	err = avirt_alsa_init();
-	if (err < 0)
-		return err;
 
 	// Set up playback
 	for (i = 0; i < playback_num; i++) {

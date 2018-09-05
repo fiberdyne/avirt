@@ -10,10 +10,10 @@
 #ifndef __AVIRT_ALSA_H__
 #define __AVIRT_ALSA_H__
 
+#include "core.h"
+
 #include <linux/platform_device.h>
 #include <sound/pcm.h>
-
-#define MAX_NAME_LEN 32
 
 #define PRINT_ERR(errno, errmsg, ...) \
 	pr_err("[%s()] %s [ERRNO:%d]", __func__, errmsg, ##__VA_ARGS__, errno);
@@ -46,37 +46,6 @@
 		}                                                \
 	} while (0)
 
-/*
- * Substream device configuration
- */
-struct avirt_alsa_dev_config {
-	const char devicename[MAX_NAME_LEN];
-	int channels;
-};
-
-/**
- * Collection of devices
- */
-struct avirt_alsa_dev_group {
-	struct avirt_alsa_dev_config *config;
-	int devices;
-};
-
-/**
- *  ALSA driver data
- */
-struct avirt_alsa_driver {
-	struct snd_card *card;
-	struct avirt_alsa_dev_group playback;
-	struct avirt_alsa_dev_group capture;
-};
-
-/**
- * avirt_alsa_init - Initializes the ALSA driver
- * @return: 0 on success or error code otherwise
- */
-int avirt_alsa_init(void);
-
 /**
  * avirt_alsa_configure_pcm- Configure the PCM device
  * @config: Device configuration structure array
@@ -84,8 +53,8 @@ int avirt_alsa_init(void);
  * @numdevices: Number of devices (array length)
  * @return: 0 on success or error code otherwise
  */
-int avirt_alsa_configure_pcm(struct avirt_alsa_dev_config *config,
-			     int direction, unsigned numdevices);
+int avirt_alsa_configure_pcm(struct avirt_alsa_devconfig *config, int direction,
+			     unsigned numdevices);
 
 /**
  * avirt_alsa_register - Registers the ALSA driver
@@ -102,12 +71,12 @@ int avirt_alsa_register(struct platform_device *devptr);
 int avirt_alsa_deregister(void);
 
 /**
- * avirt_alsa_get_dev_group - Gets the device group for the specified direction
+ * avirt_alsa_get_group - Gets the device group for the specified direction
  * @direction: SNDRV_PCM_STREAM_PLAYBACK or SNDRV_PCM_STREAM_CAPTURE
  * @return: Either the playback or capture device group on success,
  * or NULL otherwise
  */
-struct avirt_alsa_dev_group *avirt_alsa_get_dev_group(int direction);
+struct avirt_alsa_group *avirt_alsa_get_group(int direction);
 
 /**
  * pcm_buff_complete_cb - PCM buffer complete callback

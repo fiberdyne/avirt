@@ -7,7 +7,6 @@
  * Copyright (C) 2010-2018 Fiberdyne Systems Pty Ltd
  */
 
-#include "core.h"
 #include "alsa.h"
 
 #define DO_AUDIOPATH_CB(callback, substream, ...)                    \
@@ -28,9 +27,9 @@
  */
 static int configure_pcm(struct snd_pcm_substream *substream)
 {
-	struct avirt_alsa_dev_config *config;
+	struct avirt_alsa_devconfig *config;
 	struct avirt_audiopath *audiopath;
-	struct avirt_alsa_dev_group *group;
+	struct avirt_alsa_group *group;
 	struct snd_pcm_hardware *hw;
 	unsigned bytes_per_sample = 0, blocksize = 0;
 
@@ -53,7 +52,7 @@ static int configure_pcm(struct snd_pcm_substream *substream)
 	}
 
 	// Get device group (playback/capture)
-	group = avirt_alsa_get_dev_group(substream->stream);
+	group = avirt_alsa_get_group(substream->stream);
 	CHK_NULL(group);
 
 	// Check if substream id is valid
@@ -127,9 +126,9 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
 	int channels, err;
 	size_t bufsz;
 	struct avirt_audiopath *audiopath;
-	struct avirt_alsa_dev_group *group;
+	struct avirt_alsa_group *group;
 
-	group = avirt_alsa_get_dev_group(substream->stream);
+	group = avirt_alsa_get_group(substream->stream);
 	CHK_NULL(group);
 
 	channels = group->config[substream->pcm->device].channels;
@@ -259,9 +258,9 @@ static int pcm_get_time_info(
 	struct snd_pcm_audio_tstamp_config *audio_tstamp_config,
 	struct snd_pcm_audio_tstamp_report *audio_tstamp_report)
 {
-	struct avirt_alsa_dev_group *group;
+	struct avirt_alsa_group *group;
 
-	group = avirt_alsa_get_dev_group(substream->stream);
+	group = avirt_alsa_get_group(substream->stream);
 	CHK_NULL(group);
 
 	DO_AUDIOPATH_CB(get_time_info, substream, system_ts, audio_ts,
