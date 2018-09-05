@@ -138,7 +138,6 @@ static int avirt_probe(struct platform_device *devptr)
  */
 static int avirt_remove(struct platform_device *devptr)
 {
-	DPRINTK();
 	return avirt_alsa_deregister();
 }
 
