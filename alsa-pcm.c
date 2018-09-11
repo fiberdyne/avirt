@@ -20,12 +20,19 @@
 		}                                                    \
 	} while (0)
 
+/*******************************************************************************
+ * ALSA PCM Callbacks
+ ******************************************************************************/
 /**
- * configure_pcm - set up substream properties from user configuration
+ * pcm_open - Implements 'open' callback for PCM middle layer
  * @substream: pointer to ALSA PCM substream
- * @return 0 on success or error code otherwise
+ *
+ * This is called when an ALSA PCM substream is opened. The substream device is
+ * configured here.
+ *
+ * Returns 0 on success or error code otherwise.
  */
-static int configure_pcm(struct snd_pcm_substream *substream)
+static int pcm_open(struct snd_pcm_substream *substream)
 {
 	struct avirt_alsa_devconfig *config;
 	struct avirt_audiopath *audiopath;
@@ -67,26 +74,6 @@ static int configure_pcm(struct snd_pcm_substream *substream)
 			       config->channels;
 	hw->period_bytes_min = blocksize * bytes_per_sample * config->channels;
 	hw->period_bytes_max = blocksize * bytes_per_sample * config->channels;
-
-	return 0;
-}
-
-/*******************************************************************************
- * ALSA PCM Callbacks
- ******************************************************************************/
-/**
- * pcm_open - Implements 'open' callback for PCM middle layer
- * @substream: pointer to ALSA PCM substream
- *
- * This is called when an ALSA PCM substream is opened. The substream device is
- * configured here.
- *
- * Returns 0 on success or error code otherwise.
- */
-static int pcm_open(struct snd_pcm_substream *substream)
-{
-	// Setup the pcm device based on the configuration assigned
-	CHK_ERR_V(configure_pcm(substream), "Failed to setup pcm device");
 
 	// Do additional Audio Path 'open' callback
 	DO_AUDIOPATH_CB(open, substream);
