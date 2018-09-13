@@ -64,8 +64,7 @@ static int alloc_dev_config(struct avirt_alsa_devconfig **devconfig,
 	if (numdevices == 0)
 		return 0;
 
-	*devconfig = kzalloc(sizeof(*devconfig) * numdevices,
-			     GFP_KERNEL);
+	*devconfig = kzalloc(sizeof(**devconfig) * numdevices, GFP_KERNEL);
 	if (!(*devconfig))
 		return -ENOMEM;
 
