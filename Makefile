@@ -14,6 +14,7 @@ ccflags-y += -I${CCFLAGS_AVIRT}
 
 $(info $(KERNELRELEASE))
 obj-$(CONFIG_AVIRT_DUMMYAP)	+= dummy/
+obj-$(CONFIG_AVIRT_LOOPBACKAP)	+= loopback/
 
 ###
 # For out-of-tree building
@@ -27,7 +28,9 @@ else
 endif
 
 all:
-	CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y CONFIG_AVIRT_DUMMYAP=m \
+	CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y \
+	CONFIG_AVIRT_DUMMYAP=m \
+	CONFIG_AVIRT_LOOPBACKAP=m \
 	make -C $(KERNEL_SRC) M=$(PWD)
 
 clean:

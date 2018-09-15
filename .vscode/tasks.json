@@ -9,7 +9,7 @@
 	"tasks": [
 		{
 			"label": "Make Driver",
-			"command": "CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y CONFIG_AVIRT_DUMMYAP=m make -C /lib/modules/$(uname -r)/build/ M=$(pwd)",
+			"command": "CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y CONFIG_AVIRT_DUMMYAP=m CONFIG_AVIRT_LOOPBACKAP=m make -C /lib/modules/$(uname -r)/build/ M=$(pwd)",
 			"group": "build",
 			"problemMatcher": [
 				"$gcc"
@@ -17,7 +17,7 @@
 		},
 		{
 			"label": "Clean Driver",
-			"command": "CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y CONFIG_AVIRT_DUMMYAP=m make -C /lib/modules/$(uname -r)/build/ M=$(pwd) clean",
+			"command": "CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y CONFIG_AVIRT_DUMMYAP=m CONFIG_AVIRT_LOOPBACKAP=m make -C /lib/modules/$(uname -r)/build/ M=$(pwd) clean",
 			"group": "build",
 			"problemMatcher": [
 				"$gcc"
