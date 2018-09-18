@@ -18,23 +18,177 @@ MODULE_LICENSE("GPL v2");
 
 static struct avirt_coreinfo *coreinfo;
 
+struct loopback_pcm {
+	struct snd_pcm_substream *substream;
+	spinlock_t lock;
+	struct timer_list timer;
+	unsigned long base_time;
+	unsigned int frac_pos; /* fractional sample position (based HZ) */
+	unsigned int frac_period_rest;
+	unsigned int frac_buffer_size; /* buffer_size * HZ */
+	unsigned int frac_period_size; /* period_size * HZ */
+	unsigned int rate;
+	int elapsed;
+};
+
+int systimer_create(struct snd_pcm_substream *substream);
+void systimer_free(struct snd_pcm_substream *substream);
+int systimer_start(struct snd_pcm_substream *substream);
+int systimer_stop(struct snd_pcm_substream *substream);
+snd_pcm_uframes_t systimer_pointer(struct snd_pcm_substream *substream);
+int systimer_prepare(struct snd_pcm_substream *substream);
+void systimer_rearm(struct loopback_pcm *dpcm);
+void systimer_update(struct loopback_pcm *dpcm);
+
+void loopback_callback(struct timer_list *tlist);
+
+/********************************
+ * Loopback Timer Functions
+ ********************************/
+
+int systimer_create(struct snd_pcm_substream *substream)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+
+	struct loopback_pcm *dpcm;
+	dpcm = kzalloc(sizeof(*dpcm), GFP_KERNEL);
+	if (!dpcm)
+		return -ENOMEM;
+
+	timer_setup(&dpcm->timer, loopback_callback, 0);
+	spin_lock_init(&dpcm->lock);
+	dpcm->substream = substream;
+
+	runtime->private_data = dpcm;
+	return 0;
+}
+
+void systimer_free(struct snd_pcm_substream *substream)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	kfree(runtime->private_data);
+}
+
+int systimer_start(struct snd_pcm_substream *substream)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct loopback_pcm *dpcm = runtime->private_data;
+	spin_lock(&dpcm->lock);
+	dpcm->base_time = jiffies;
+	systimer_rearm(dpcm);
+	spin_unlock(&dpcm->lock);
+	return 0;
+}
+
+int systimer_stop(struct snd_pcm_substream *substream)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct loopback_pcm *dpcm = runtime->private_data;
+	spin_lock(&dpcm->lock);
+	del_timer(&dpcm->timer);
+	spin_unlock(&dpcm->lock);
+	return 0;
+}
+
+snd_pcm_uframes_t systimer_pointer(struct snd_pcm_substream *substream)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct loopback_pcm *dpcm = runtime->private_data;
+
+	snd_pcm_uframes_t pos;
+
+	spin_lock(&dpcm->lock);
+	systimer_update(dpcm);
+	pos = dpcm->frac_pos / HZ;
+	spin_unlock(&dpcm->lock);
+	return pos;
+}
+
+int systimer_prepare(struct snd_pcm_substream *substream)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct loopback_pcm *dpcm = runtime->private_data;
+
+	dpcm->frac_pos = 0;
+	dpcm->rate = runtime->rate;
+	dpcm->frac_buffer_size = runtime->buffer_size * HZ;
+	dpcm->frac_period_size = runtime->period_size * HZ;
+	dpcm->frac_period_rest = dpcm->frac_period_size;
+	dpcm->elapsed = 0;
+
+	return 0;
+}
+
+void systimer_rearm(struct loopback_pcm *dpcm)
+{
+	mod_timer(&dpcm->timer, jiffies + (dpcm->frac_period_rest + dpcm->rate -
+					   1) / dpcm->rate);
+}
+
+void systimer_update(struct loopback_pcm *dpcm)
+{
+	unsigned long delta;
+
+	delta = jiffies - dpcm->base_time;
+	if (!delta)
+		return;
+	dpcm->base_time += delta;
+	delta *= dpcm->rate;
+	dpcm->frac_pos += delta;
+	while (dpcm->frac_pos >= dpcm->frac_buffer_size)
+		dpcm->frac_pos -= dpcm->frac_buffer_size;
+	while (dpcm->frac_period_rest <= delta) {
+		dpcm->elapsed++;
+		dpcm->frac_period_rest += dpcm->frac_period_size;
+	}
+	dpcm->frac_period_rest -= delta;
+}
+
+/*******
+ * Loopback Timer Callback
+ *******/
+
+void loopback_callback(struct timer_list *tlist)
+{
+	struct loopback_pcm *dpcm = from_timer(dpcm, tlist, timer);
+
+	unsigned long flags;
+	int elapsed = 0;
+
+	spin_lock_irqsave(&dpcm->lock, flags);
+
+	// Perform copy from playback to capture
+	systimer_update(dpcm);
+	systimer_rearm(dpcm);
+	elapsed = dpcm->elapsed;
+	dpcm->elapsed = 0;
+	spin_unlock_irqrestore(&dpcm->lock, flags);
+	if (elapsed)
+		coreinfo->pcm_buff_complete(dpcm->substream);
+}
+
 /*******************************************************************************
  * Audio Path ALSA PCM Callbacks
  ******************************************************************************/
 static int loopback_pcm_open(struct snd_pcm_substream *substream)
 {
+	int err = systimer_create(substream);
+	if (err < 0)
+		return err;
+
 	return 0;
 }
 
 static int loopback_pcm_close(struct snd_pcm_substream *substream)
 {
+	systimer_free(substream);
 	return 0;
 }
 
 static snd_pcm_uframes_t
 	loopback_pcm_pointer(struct snd_pcm_substream *substream)
 {
-	return 0;
+	return systimer_pointer(substream);
 }
 
 static int loopback_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
@@ -42,16 +196,17 @@ static int loopback_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
+		return systimer_start(substream);
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
-		return 0;
+		return systimer_stop(substream);
 	}
 	return -EINVAL;
 }
 
 static int loopback_pcm_prepare(struct snd_pcm_substream *substream)
 {
-	return 0;
+	return systimer_prepare(substream);
 }
 
 static struct snd_pcm_ops loopbackap_pcm_ops = {
@@ -71,10 +226,13 @@ static struct snd_pcm_hardware loopbackap_hw = {
 		 | SNDRV_PCM_INFO_BLOCK_TRANSFER | SNDRV_PCM_INFO_MMAP |
 		 SNDRV_PCM_INFO_MMAP_VALID),
 	.rates = SNDRV_PCM_RATE_48000,
-	.rate_min = 48000,
+	.rate_min = 2000,
 	.rate_max = 48000,
+	.channels_min = 1,
+	.channels_max = 8,
+	.buffer_bytes_max = 32768,
 	.periods_min = 1,
-	.periods_max = 8,
+	.periods_max = 1024,
 };
 
 static struct avirt_audiopath loopbackap_module = {
