@@ -13,6 +13,7 @@ capture_names=voice"
 insmod avirt_core.ko "$params"
 
 # Load the additional audio path
-insmod dummy/avirt_dummyap.ko
+#insmod dummy/avirt_dummyap.ko
+insmod loopback/avirt_loopbackap.ko
 
 echo "Drivers Loaded!"

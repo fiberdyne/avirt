@@ -10,6 +10,9 @@
 #include "core.h"
 #include "alsa.h"
 
+#define DINFO(fmt, args...) \
+	printk(KERN_INFO "[CORE] %d:%s " fmt "\n", __LINE__, __func__, ##args)
+
 #define DO_AUDIOPATH_CB(callback, substream, ...)                    \
 	do {                                                         \
 		struct avirt_audiopath *ap;                          \
@@ -86,6 +89,7 @@ static int configure_pcm(struct snd_pcm_substream *substream)
  */
 static int pcm_open(struct snd_pcm_substream *substream)
 {
+	DINFO("");
 	// Setup the pcm device based on the configuration assigned
 	CHK_ERR_V(configure_pcm(substream), "Failed to setup pcm device");
 
@@ -105,6 +109,7 @@ static int pcm_open(struct snd_pcm_substream *substream)
  */
 static int pcm_close(struct snd_pcm_substream *substream)
 {
+	DINFO("");
 	// Do additional Audio Path 'close' callback
 	DO_AUDIOPATH_CB(close, substream);
 
@@ -191,6 +196,8 @@ static int pcm_prepare(struct snd_pcm_substream *substream)
 	struct avirt_alsa_dev_group *group;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
+	DINFO("");
+
 	group = avirt_alsa_get_dev_group(substream->stream);
 	CHK_NULL(group);
 
@@ -218,6 +225,8 @@ static int pcm_prepare(struct snd_pcm_substream *substream)
 static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct avirt_alsa_dev_group *group;
+
+	DINFO("");
 
 	group = avirt_alsa_get_dev_group(substream->stream);
 	CHK_NULL(group);

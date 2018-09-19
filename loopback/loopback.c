@@ -16,6 +16,20 @@ MODULE_AUTHOR("MFARRUGI <mark.farrugia@fiberdyne.com.au>");
 MODULE_DESCRIPTION("Sample Audio Path Module Interface");
 MODULE_LICENSE("GPL v2");
 
+#define AP_LOGNAME "LOOPAP"
+
+#define DERROR(fmt, args...)                                          \
+	printk(KERN_ERR "[%s] %d:%s " fmt "\n", AP_LOGNAME, __LINE__, \
+	       __func__, ##args)
+
+#define DINFO(fmt, args...)                                            \
+	printk(KERN_INFO "[%s] %d:%s " fmt "\n", AP_LOGNAME, __LINE__, \
+	       __func__, ##args)
+
+#define DPRINT(fmt, args...)                                            \
+	printk(KERN_DEBUG "[%s] %d:%s " fmt "\n", AP_LOGNAME, __LINE__, \
+	       __func__, ##args)
+
 static struct avirt_coreinfo *coreinfo;
 
 struct loopback_pcm {
@@ -148,6 +162,7 @@ void systimer_update(struct loopback_pcm *dpcm)
  * Loopback Timer Callback
  *******/
 
+//
 void loopback_callback(struct timer_list *tlist)
 {
 	struct loopback_pcm *dpcm = from_timer(dpcm, tlist, timer);
@@ -172,7 +187,15 @@ void loopback_callback(struct timer_list *tlist)
  ******************************************************************************/
 static int loopback_pcm_open(struct snd_pcm_substream *substream)
 {
-	int err = systimer_create(substream);
+	int err;
+
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct loopback_pcm *dpcm = runtime->private_data;
+
+	DINFO("Open\n%s\nrate: %d\nch: %d", substream->pcm->name, runtime->rate,
+	      runtime->channels);
+
+	err = systimer_create(substream);
 	if (err < 0)
 		return err;
 
@@ -181,6 +204,11 @@ static int loopback_pcm_open(struct snd_pcm_substream *substream)
 
 static int loopback_pcm_close(struct snd_pcm_substream *substream)
 {
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct loopback_pcm *dpcm = runtime->private_data;
+
+	DINFO("Close");
+
 	systimer_free(substream);
 	return 0;
 }
@@ -188,11 +216,15 @@ static int loopback_pcm_close(struct snd_pcm_substream *substream)
 static snd_pcm_uframes_t
 	loopback_pcm_pointer(struct snd_pcm_substream *substream)
 {
+	DINFO("Pointer");
+
 	return systimer_pointer(substream);
 }
 
 static int loopback_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
+	DINFO("Trigger");
+
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
@@ -206,6 +238,12 @@ static int loopback_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 
 static int loopback_pcm_prepare(struct snd_pcm_substream *substream)
 {
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct loopback_pcm *dpcm = runtime->private_data;
+
+	DINFO("Prepare");
+	DINFO("Runtime\nrate: %d\nch: %d", runtime->rate, runtime->channels);
+
 	return systimer_prepare(substream);
 }
 
@@ -225,14 +263,16 @@ static struct snd_pcm_hardware loopbackap_hw = {
 	.info = (SNDRV_PCM_INFO_INTERLEAVED // Channel interleaved audio
 		 | SNDRV_PCM_INFO_BLOCK_TRANSFER | SNDRV_PCM_INFO_MMAP |
 		 SNDRV_PCM_INFO_MMAP_VALID),
-	.rates = SNDRV_PCM_RATE_48000,
-	.rate_min = 2000,
+	.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
+		 SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |
+		 SNDRV_PCM_RATE_48000,
+	.rate_min = 8000,
 	.rate_max = 48000,
 	.channels_min = 1,
 	.channels_max = 8,
-	.buffer_bytes_max = 32768,
+	//.buffer_bytes_max = 32768,
 	.periods_min = 1,
-	.periods_max = 1024,
+	.periods_max = 8,
 };
 
 static struct avirt_audiopath loopbackap_module = {
@@ -248,11 +288,11 @@ static int __init loopback_init(void)
 {
 	int err = 0;
 
-	pr_info("init()\n");
+	DINFO("init()\n");
 
 	err = avirt_register_audiopath(&loopbackap_module, &coreinfo);
 	if ((err < 0) || (!coreinfo)) {
-		pr_err("%s: coreinfo is NULL!\n", __func__);
+		DERROR("%s: coreinfo is NULL!\n", __func__);
 		return err;
 	}
 
@@ -261,7 +301,7 @@ static int __init loopback_init(void)
 
 static void __exit loopback_exit(void)
 {
-	pr_info("exit()\n");
+	DINFO("exit()\n");
 
 	avirt_deregister_audiopath(&loopbackap_module);
 }
