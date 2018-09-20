@@ -8,7 +8,6 @@
  */
 
 #include <linux/module.h>
-#include <linux/slab.h>
 #include <linux/platform_device.h>
 
 #include "avirt/core.h"
@@ -273,13 +272,13 @@ static struct kobj_type avirt_audiopath_ktype = {
 
 /**
  * create_avirt_audiopath_obj - creates an Audio Path object
- * @name: name of the Audio Path
+ * @uid: Unique ID of the Audio Path
  *
  * This creates an Audio Path object and assigns the kset and registers
  * it with sysfs.
  * @return: Pointer to the Audio Path object or NULL if it failed.
  */
-static struct avirt_audiopath_obj *create_avirt_audiopath_obj(const char *name)
+static struct avirt_audiopath_obj *create_avirt_audiopath_obj(const char *uid)
 {
 	struct avirt_audiopath_obj *avirt_audiopath;
 	int retval;
@@ -289,7 +288,7 @@ static struct avirt_audiopath_obj *create_avirt_audiopath_obj(const char *name)
 		return NULL;
 	avirt_audiopath->kobj.kset = avirt_audiopath_kset;
 	retval = kobject_init_and_add(&avirt_audiopath->kobj,
-				      &avirt_audiopath_ktype, kobj, "%s", name);
+				      &avirt_audiopath_ktype, kobj, "%s", uid);
 	if (retval) {
 		kobject_put(&avirt_audiopath->kobj);
 		return NULL;
@@ -308,14 +307,20 @@ static void destroy_avirt_audiopath_obj(struct avirt_audiopath_obj *p)
 }
 
 /**
- * avirt_get_current_audiopath - retrieves the current Audio Path
- * @return: Current Audio Path
+ * avirt_get_audiopath - retrieves the Audio Path by its UID
+ * @uid: Unique ID for the Audio Path
+ * @return: Corresponding Audio Path
  */
-struct avirt_audiopath *avirt_get_current_audiopath(void)
+struct avirt_audiopath *avirt_get_audiopath(const char *uid)
 {
-	struct avirt_audiopath_obj *ap_obj = list_entry(
-		audiopath_list.next, struct avirt_audiopath_obj, list);
-	return ap_obj->path;
+	struct avirt_audiopath_obj *ap_obj;
+	list_for_each_entry (ap_obj, &audiopath_list, list) {
+		pr_info("get_ap %s\n", ap_obj->path->uid);
+		if (!strcmp(ap_obj->path->uid, uid))
+			return ap_obj->path;
+	}
+
+	return NULL;
 }
 
 /**
@@ -334,7 +339,7 @@ int avirt_register_audiopath(struct avirt_audiopath *audiopath,
 		return -EINVAL;
 	}
 
-	audiopath_obj = create_avirt_audiopath_obj(audiopath->name);
+	audiopath_obj = create_avirt_audiopath_obj(audiopath->uid);
 	if (!audiopath_obj) {
 		pr_info("failed to alloc driver object\n");
 		return -ENOMEM;
@@ -342,7 +347,7 @@ int avirt_register_audiopath(struct avirt_audiopath *audiopath,
 	audiopath_obj->path = audiopath;
 
 	audiopath->context = audiopath_obj;
-	pr_info("Registered new Audio Path: %s\n", audiopath->name);
+	pr_info("Registered new Audio Path: %s\n", audiopath->uid);
 	pr_info("\tBlocksize: %d, Periods: %d\n", audiopath->blocksize,
 		audiopath->hw->periods_max);
 	list_add_tail(&audiopath_obj->list, &audiopath_list);
@@ -376,7 +381,7 @@ int avirt_deregister_audiopath(struct avirt_audiopath *audiopath)
 
 	list_del(&audiopath_obj->list);
 	destroy_avirt_audiopath_obj(audiopath_obj);
-	pr_info("Deregistered Audio Path %s\n", audiopath->name);
+	pr_info("Deregistered Audio Path %s\n", audiopath->uid);
 
 	return 0;
 }

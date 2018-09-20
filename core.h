@@ -26,11 +26,12 @@ typedef int (*avirt_buff_complete)(struct snd_pcm_substream *substream);
  * AVIRT Audio Path info
  */
 struct avirt_audiopath {
-	const char *name;
-	unsigned int version[3];
-	struct snd_pcm_hardware *hw;
-	struct snd_pcm_ops *pcm_ops;
-	unsigned int blocksize;
+	const char *uid; /* Unique identifier */
+	const char *name; /* Pretty name */
+	unsigned int version[3]; /* Version - Major.Minor.Ext */
+	struct snd_pcm_hardware *hw; /* ALSA PCM HW conf */
+	struct snd_pcm_ops *pcm_ops; /* ALSA PCM op table */
+	unsigned int blocksize; /* Audio frame size accepted */
 
 	void *context;
 };
@@ -80,9 +81,19 @@ int avirt_register_audiopath(struct avirt_audiopath *audiopath,
 int avirt_deregister_audiopath(struct avirt_audiopath *audiopath);
 
 /**
- * avirt_get_current_audiopath - retrieves the current Audio Path
- * @return: Current Audio Path
+ * avirt_get_audiopath - retrieves the Audio Path by it's UID
+ * @uid: Unique ID for the Audio Path
+ * @return: Corresponding Audio Path
  */
-struct avirt_audiopath *avirt_get_current_audiopath(void);
+struct avirt_audiopath *avirt_get_audiopath(const char *uid);
+
+/**
+ * avirt_subscribe_stream - subscribe the Audio Path to the given streams
+ * @audiopath: Audio Path to subscribe for
+ * @streams: The streams to subscribe the Audio Path to
+ * return: 0 on success or error code otherwise
+ */
+int avirt_subscribe_stream(struct avirt_audiopath *audiopath,
+			   const char **streams);
 
 #endif // __AVIRT_CORE_H__

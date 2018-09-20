@@ -7,7 +7,6 @@
  * Copyright (C) 2010-2018 Fiberdyne Systems Pty Ltd
  */
 
-#include <linux/slab.h>
 #include <sound/core.h>
 #include <sound/initval.h>
 

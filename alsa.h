@@ -13,10 +13,11 @@
 #include "core.h"
 
 #include <linux/platform_device.h>
+#include <linux/slab.h>
 #include <sound/pcm.h>
 
-#define PRINT_ERR(errno, errmsg, ...) \
-	pr_err("[%s()] %s [ERRNO:%d]", __func__, errmsg, ##__VA_ARGS__, errno);
+#define PRINT_ERR(errno, errmsg) \
+	pr_err("[%s]:[ERRNO:%d]: %s ", __func__, errno, (errmsg));
 
 #define CHK_ERR(errno)                  \
 	do {                            \
@@ -38,12 +39,15 @@
 			return -EFAULT; \
 	} while (0)
 
-#define CHK_NULL_V(x, errmsg, ...)                                 \
-	do {                                                       \
-		if (!(x)) {                                        \
-			PRINT_ERR(EFAULT, (errmsg), ##__VA_ARGS__) \
-			return -EFAULT;                            \
-		}                                                  \
+#define CHK_NULL_V(x, errmsg, ...)                                            \
+	do {                                                                  \
+		if (!(x)) {                                                   \
+			char *errmsg_done =                                   \
+				kasprintf(GFP_KERNEL, errmsg, ##__VA_ARGS__); \
+			PRINT_ERR(EFAULT, errmsg_done);                       \
+			kfree(errmsg_done);                                   \
+			return -EFAULT;                                       \
+		}                                                             \
 	} while (0)
 
 extern struct avirt_coreinfo coreinfo;
