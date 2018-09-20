@@ -11,6 +11,7 @@
 #define __AVIRT_CORE_H__
 
 #include <sound/pcm.h>
+#include <linux/configfs.h>
 
 #define MAX_NAME_LEN 32
 
@@ -37,19 +38,20 @@ struct avirt_audiopath {
 };
 
 /*
- * ALSA Substream device configuration
+ * Audio stream configuration
  */
-struct avirt_alsa_devconfig {
-	const char devicename[MAX_NAME_LEN];
-	int channels;
+struct avirt_stream {
+	struct snd_pcm *pcm; /* Stream PCM device */
+	unsigned int channels; /* Stream channel count */
+	struct config_item item; /* configfs item reference */
 };
 
 /**
- * Collection of ALSA devices
+ * Collection of audio streams
  */
-struct avirt_alsa_group {
-	struct avirt_alsa_devconfig *config;
-	int devices;
+struct avirt_stream_group {
+	struct avirt_stream *streams; /* AVIRT stream array */
+	unsigned int devices; /* Number of stream devices */
 };
 
 /**
@@ -58,8 +60,8 @@ struct avirt_alsa_group {
 struct avirt_coreinfo {
 	unsigned int version[3];
 
-	struct avirt_alsa_group playback;
-	struct avirt_alsa_group capture;
+	struct avirt_stream_group playback;
+	struct avirt_stream_group capture;
 
 	avirt_buff_complete pcm_buff_complete;
 };

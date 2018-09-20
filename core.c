@@ -9,9 +9,13 @@
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/string.h>
+#include <sound/core.h>
+#include <sound/initval.h>
 
 #include "avirt/core.h"
-#include "alsa.h"
+#include "alsa-pcm.h"
+#include "utils.h"
 
 MODULE_AUTHOR("JOSHANNE <james.oshannessy@fiberdyne.com.au>");
 MODULE_AUTHOR("MFARRUGI <mark.farrugia@fiberdyne.com.au>");
@@ -52,8 +56,8 @@ module_param_array(capture_chans, int, NULL, DEFAULT_FILE_PERMS);
 MODULE_PARM_DESC(capture_chans, "Channels per capture device");
 
 static struct avirt_core {
+	struct snd_card *card;
 	struct device *dev;
-
 	struct class *avirt_class;
 	struct platform_device *platform_dev;
 } core;
@@ -72,8 +76,8 @@ static LIST_HEAD(audiopath_list);
  */
 static int avirt_probe(struct platform_device *devptr)
 {
-	// struct avirt_alsa_devconfig capture_config[MAX_PCM_DEVS];
-	struct avirt_alsa_devconfig playback_config[MAX_PCM_DEVS];
+	static struct snd_device_ops device_ops;
+	struct snd_pcm **pcm;
 	int err = 0, i = 0;
 
 	if (playback_num == 0 && capture_num == 0) {
@@ -81,51 +85,71 @@ static int avirt_probe(struct platform_device *devptr)
 		return -EINVAL;
 	}
 
-	// Set up playback
-	for (i = 0; i < playback_num; i++) {
-		if (!playback_names[i]) {
-			pr_err("Playback config dev name is NULL for idx=%d\n",
-			       i);
-			return -EINVAL;
+	// Create the card instance
+	CHK_ERR_V(snd_card_new(&devptr->dev, SNDRV_DEFAULT_IDX1, "avirt",
+			       THIS_MODULE, 0, &core.card),
+		  "Failed to create sound card");
+
+	strcpy(core.card->driver, "avirt-alsa-device");
+	strcpy(core.card->shortname, "avirt");
+	strcpy(core.card->longname, "A virtual sound card driver for ALSA");
+
+	// Create new sound device
+	CHK_ERR_V((snd_device_new(core.card, SNDRV_DEV_LOWLEVEL, &coreinfo,
+				  &device_ops)),
+		  "Failed to create sound device");
+
+	// TEMP
+	if (playback_num > 0) {
+		coreinfo.playback.devices = playback_num;
+		coreinfo.playback.streams = kzalloc(
+			sizeof(*coreinfo.playback.streams) * playback_num,
+			GFP_KERNEL);
+		for (i = 0; i < playback_num; i++) {
+			pcm = &coreinfo.playback.streams[i].pcm;
+			CHK_ERR(snd_pcm_new(core.card, playback_names[i], i, 1,
+					    0, pcm));
+
+			/** Register driver callbacks */
+			snd_pcm_set_ops(*pcm, SNDRV_PCM_STREAM_PLAYBACK,
+					&pcm_ops);
+
+			(*pcm)->info_flags = 0;
+			strcpy((*pcm)->name, playback_names[i]);
+			coreinfo.playback.streams[i].channels =
+				playback_chans[i];
+			pr_info("snd_pcm_new: name: %s, chans: %d\n",
+				(*pcm)->name,
+				coreinfo.playback.streams[i].channels);
 		}
-		memcpy((char *)playback_config[i].devicename, playback_names[i],
-		       MAX_NAME_LEN);
-		if (playback_chans[i] == 0) {
-			pr_err("Playback config channels is 0 for idx=%d\n", i);
-			return -EINVAL;
-		}
-		playback_config[i].channels = playback_chans[i];
 	}
-	err = avirt_alsa_configure_pcm(playback_config,
-				       SNDRV_PCM_STREAM_PLAYBACK, playback_num);
-	if (err < 0)
-		return err;
 
-// Does not work yet!
-#if 0
-	// Set up capture
-	for (i = 0; i < capture_num; i++) {
-		if (!capture_names[i]) {
-			pr_err("Capture config devicename is NULL for idx=%d",
-			       i);
-			return -EINVAL;
-		}
-		memcpy((char *)capture_config[i].devicename, capture_names[i],
-		       255);
+	if (capture_num > 0) {
+		coreinfo.capture.devices = capture_num;
+		coreinfo.capture.streams =
+			kzalloc(sizeof(*coreinfo.capture.streams) * capture_num,
+				GFP_KERNEL);
+		for (i = 0; i < capture_num; i++) {
+			pcm = &coreinfo.capture.streams[i].pcm;
+			CHK_ERR(snd_pcm_new(core.card, capture_names[i],
+					    i + playback_num, 0, 1, pcm));
 
-		if (capture_chans[i] == 0) {
-			pr_err("Capture config channels is 0 for idx=%d");
-			return -EINVAL;
+			/** Register driver callbacks */
+			snd_pcm_set_ops(*pcm, SNDRV_PCM_STREAM_CAPTURE,
+					&pcm_ops);
+
+			(*pcm)->info_flags = 0;
+			strcpy((*pcm)->name, capture_names[i]);
+			coreinfo.capture.streams[i].channels = capture_chans[i];
+			pr_info("snd_pcm_new: name: %s, chans: %d\n",
+				(*pcm)->name,
+				coreinfo.capture.streams[i].channels);
 		}
-		capture_config[i].channels = capture_chans[i];
 	}
-	err = avirt_alsa_configure_pcm(capture_config, SNDRV_PCM_STREAM_CAPTURE, capture_num);
-	if (err < 0)
-		return err;
-#endif
+	// TEMP
 
-	// Register for ALSA
-	CHK_ERR(avirt_alsa_register(devptr));
+	/** Register with the ALSA framework */
+	CHK_ERR_V(snd_card_register(core.card), "Device registration failed");
 
 	return err;
 }
@@ -137,7 +161,13 @@ static int avirt_probe(struct platform_device *devptr)
  */
 static int avirt_remove(struct platform_device *devptr)
 {
-	return avirt_alsa_deregister();
+	snd_card_free(core.card);
+	CHK_NULL(coreinfo.playback.streams);
+	kfree(coreinfo.playback.streams);
+	CHK_NULL(coreinfo.capture.streams);
+	kfree(coreinfo.capture.streams);
+
+	return 0;
 }
 
 static struct platform_driver avirt_driver = {

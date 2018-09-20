@@ -2,12 +2,13 @@
 /*
  * ALSA Virtual Soundcard
  *
- * alsa-pcm.c - ALSA PCM implementation
+ * alsa-pcm.c - AVIRT ALSA PCM interface
  *
  * Copyright (C) 2010-2018 Fiberdyne Systems Pty Ltd
  */
 
-#include "alsa.h"
+#include "alsa-pcm.h"
+#include "utils.h"
 
 #define DO_AUDIOPATH_CB(ap, callback, substream, ...)                \
 	do {                                                         \
@@ -16,6 +17,36 @@
 						     ##__VA_ARGS__); \
 		}                                                    \
 	} while (0)
+
+/**
+ * pcm_buff_complete_cb - PCM buffer complete callback
+ * @substreamid: pointer to ALSA PCM substream
+ * @return 0 on success or error code otherwise
+ *
+ * This should be called from a child Audio Path once it has finished processing
+ * the pcm buffer
+ */
+int pcm_buff_complete_cb(struct snd_pcm_substream *substream)
+{
+	// Notify ALSA middle layer of the elapsed period boundary
+	snd_pcm_period_elapsed(substream);
+
+	return 0;
+}
+
+static struct avirt_stream_group *avirt_stream_get_group(int direction)
+{
+	switch (direction) {
+	case SNDRV_PCM_STREAM_PLAYBACK:
+		return &coreinfo.playback;
+	case SNDRV_PCM_STREAM_CAPTURE:
+		return &coreinfo.capture;
+	default:
+		pr_err("[%s] Direction must be SNDRV_PCM_STREAM_XXX!",
+		       __func__);
+		return NULL;
+	}
+}
 
 /*******************************************************************************
  * ALSA PCM Callbacks
@@ -31,13 +62,12 @@
  */
 static int pcm_open(struct snd_pcm_substream *substream)
 {
-	struct avirt_alsa_devconfig *config;
 	struct avirt_audiopath *audiopath;
-	struct avirt_alsa_group *group;
+	struct avirt_stream_group *group;
 	struct snd_pcm_hardware *hw;
-	unsigned int bytes_per_sample = 0, blocksize = 0;
+	unsigned int bytes_per_sample = 0, blocksize = 0, chans = 0;
 
-	char *uid = "ap_dummy"; // TD MF: Make this dynamic!
+	char *uid = "ap_fddsp"; // TD MF: Make this dynamic!
 	audiopath = avirt_get_audiopath(uid);
 	CHK_NULL_V(audiopath, "Cannot find Audio Path uid: '%s'!", uid);
 	substream->private_data = audiopath;
@@ -58,7 +88,7 @@ static int pcm_open(struct snd_pcm_substream *substream)
 	}
 
 	// Get device group (playback/capture)
-	group = avirt_alsa_get_group(substream->stream);
+	group = avirt_stream_get_group(substream->stream);
 	CHK_NULL(group);
 
 	// Check if substream id is valid
@@ -66,13 +96,13 @@ static int pcm_open(struct snd_pcm_substream *substream)
 		return -1;
 
 	// Setup remaining hw properties
-	config = &group->config[substream->pcm->device];
-	hw->channels_min = config->channels;
-	hw->channels_max = config->channels;
-	hw->buffer_bytes_max = blocksize * hw->periods_max * bytes_per_sample *
-			       config->channels;
-	hw->period_bytes_min = blocksize * bytes_per_sample * config->channels;
-	hw->period_bytes_max = blocksize * bytes_per_sample * config->channels;
+	chans = group->streams[substream->pcm->device].channels;
+	hw->channels_min = chans;
+	hw->channels_max = chans;
+	hw->buffer_bytes_max =
+		blocksize * hw->periods_max * bytes_per_sample * chans;
+	hw->period_bytes_min = blocksize * bytes_per_sample * chans;
+	hw->period_bytes_max = blocksize * bytes_per_sample * chans;
 
 	// Do additional Audio Path 'open' callback
 	DO_AUDIOPATH_CB(audiopath, open, substream);
@@ -113,12 +143,12 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
 	int channels, err;
 	size_t bufsz;
 	struct avirt_audiopath *audiopath;
-	struct avirt_alsa_group *group;
+	struct avirt_stream_group *group;
 
-	group = avirt_alsa_get_group(substream->stream);
+	group = avirt_stream_get_group(substream->stream);
 	CHK_NULL(group);
 
-	channels = group->config[substream->pcm->device].channels;
+	channels = group->streams[substream->pcm->device].channels;
 
 	if ((params_channels(hw_params) > channels) ||
 	    (params_channels(hw_params) < channels)) {
@@ -246,11 +276,6 @@ static int pcm_get_time_info(
 	struct snd_pcm_audio_tstamp_config *audio_tstamp_config,
 	struct snd_pcm_audio_tstamp_report *audio_tstamp_report)
 {
-	struct avirt_alsa_group *group;
-
-	group = avirt_alsa_get_group(substream->stream);
-	CHK_NULL(group);
-
 	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
 			get_time_info, substream, system_ts, audio_ts,
 			audio_tstamp_config, audio_tstamp_report);
