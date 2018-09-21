@@ -68,7 +68,7 @@ static int pcm_open(struct snd_pcm_substream *substream)
 	unsigned int bytes_per_sample = 0, blocksize = 0, chans = 0;
 
 	char *uid = "ap_fddsp"; // TD MF: Make this dynamic!
-	audiopath = avirt_get_audiopath(uid);
+	audiopath = avirt_audiopath_get(uid);
 	CHK_NULL_V(audiopath, "Cannot find Audio Path uid: '%s'!", uid);
 	substream->private_data = audiopath;
 

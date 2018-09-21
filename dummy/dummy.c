@@ -258,7 +258,7 @@ static int __init dummy_init(void)
 
 	pr_info("init()\n");
 
-	err = avirt_register_audiopath(&dummyap_module, &coreinfo);
+	err = avirt_audiopath_register(&dummyap_module, &coreinfo);
 	if ((err < 0) || (!coreinfo)) {
 		pr_err("%s: coreinfo is NULL!\n", __func__);
 		return err;
@@ -271,7 +271,7 @@ static void __exit dummy_exit(void)
 {
 	pr_info("exit()\n");
 
-	avirt_deregister_audiopath(&dummyap_module);
+	avirt_audiopath_deregister(&dummyap_module);
 }
 
 module_init(dummy_init);

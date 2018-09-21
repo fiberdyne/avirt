@@ -337,11 +337,11 @@ static void destroy_avirt_audiopath_obj(struct avirt_audiopath_obj *p)
 }
 
 /**
- * avirt_get_audiopath - retrieves the Audio Path by its UID
+ * avirt_audiopath_get - retrieves the Audio Path by its UID
  * @uid: Unique ID for the Audio Path
  * @return: Corresponding Audio Path
  */
-struct avirt_audiopath *avirt_get_audiopath(const char *uid)
+struct avirt_audiopath *avirt_audiopath_get(const char *uid)
 {
 	struct avirt_audiopath_obj *ap_obj;
 	list_for_each_entry (ap_obj, &audiopath_list, list) {
@@ -354,12 +354,12 @@ struct avirt_audiopath *avirt_get_audiopath(const char *uid)
 }
 
 /**
- * avirt_register_audiopath - register Audio Path with ALSA virtual driver
+ * avirt_audiopath_register - register Audio Path with ALSA virtual driver
  * @audiopath: Audio Path to be registered
  * @core: ALSA virtual driver core info
  * @return: 0 on success or error code otherwise
  */
-int avirt_register_audiopath(struct avirt_audiopath *audiopath,
+int avirt_audiopath_register(struct avirt_audiopath *audiopath,
 			     struct avirt_coreinfo **info)
 {
 	struct avirt_audiopath_obj *audiopath_obj;
@@ -386,14 +386,14 @@ int avirt_register_audiopath(struct avirt_audiopath *audiopath,
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(avirt_register_audiopath);
+EXPORT_SYMBOL_GPL(avirt_audiopath_register);
 
 /**
- * avirt_deregister_audiopath - deregister Audio Path with ALSA virtual driver
+ * avirt_audiopath_deregister - deregister Audio Path with ALSA virtual driver
  * @audiopath: Audio Path to be deregistered
  * @return: 0 on success or error code otherwise
  */
-int avirt_deregister_audiopath(struct avirt_audiopath *audiopath)
+int avirt_audiopath_deregister(struct avirt_audiopath *audiopath)
 {
 	struct avirt_audiopath_obj *audiopath_obj;
 
@@ -415,7 +415,7 @@ int avirt_deregister_audiopath(struct avirt_audiopath *audiopath)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(avirt_deregister_audiopath);
+EXPORT_SYMBOL_GPL(avirt_audiopath_deregister);
 
 /**
  * avirt_unregister_all - Unregister the platform device driver

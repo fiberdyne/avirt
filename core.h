@@ -67,27 +67,27 @@ struct avirt_coreinfo {
 };
 
 /**
- * avirt_register_audiopath - register Audio Path with ALSA virtual driver
+ * avirt_audiopath_register - register Audio Path with ALSA virtual driver
  * @audiopath: Audio Path to be registered
  * @core: ALSA virtual driver core info
  * @return: 0 on success or error code otherwise
  */
-int avirt_register_audiopath(struct avirt_audiopath *audiopath,
+int avirt_audiopath_register(struct avirt_audiopath *audiopath,
 			     struct avirt_coreinfo **coreinfo);
 
 /**
- * avirt_deregister_audiopath - deregister Audio Path with ALSA virtual driver
+ * avirt_audiopath_deregister - deregister Audio Path with ALSA virtual driver
  * @audiopath: Audio Path to be deregistered
  * @return: 0 on success or error code otherwise
  */
-int avirt_deregister_audiopath(struct avirt_audiopath *audiopath);
+int avirt_audiopath_deregister(struct avirt_audiopath *audiopath);
 
 /**
- * avirt_get_audiopath - retrieves the Audio Path by it's UID
+ * avirt_audiopath_get - retrieves the Audio Path by it's UID
  * @uid: Unique ID for the Audio Path
  * @return: Corresponding Audio Path
  */
-struct avirt_audiopath *avirt_get_audiopath(const char *uid);
+struct avirt_audiopath *avirt_audiopath_get(const char *uid);
 
 /**
  * avirt_subscribe_stream - subscribe the Audio Path to the given streams
