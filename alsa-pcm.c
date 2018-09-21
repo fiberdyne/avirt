@@ -10,8 +10,7 @@
 #include "core.h"
 #include "alsa.h"
 
-#define DINFO(fmt, args...) \
-	printk(KERN_INFO "[CORE] %d:%s " fmt "\n", __LINE__, __func__, ##args)
+#define AP_LOGNAME "CORE"
 
 #define DO_AUDIOPATH_CB(callback, substream, ...)                    \
 	do {                                                         \
@@ -89,7 +88,7 @@ static int configure_pcm(struct snd_pcm_substream *substream)
  */
 static int pcm_open(struct snd_pcm_substream *substream)
 {
-	DINFO("");
+	DINFO(AP_LOGNAME, "");
 	// Setup the pcm device based on the configuration assigned
 	CHK_ERR_V(configure_pcm(substream), "Failed to setup pcm device");
 
@@ -109,7 +108,7 @@ static int pcm_open(struct snd_pcm_substream *substream)
  */
 static int pcm_close(struct snd_pcm_substream *substream)
 {
-	DINFO("");
+	DINFO(AP_LOGNAME, "");
 	// Do additional Audio Path 'close' callback
 	DO_AUDIOPATH_CB(close, substream);
 
@@ -133,6 +132,8 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
 	size_t bufsz;
 	struct avirt_audiopath *audiopath;
 	struct avirt_alsa_dev_group *group;
+
+	DINFO(AP_LOGNAME, "");
 
 	group = avirt_alsa_get_dev_group(substream->stream);
 	CHK_NULL(group);
@@ -173,6 +174,7 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
  */
 static int pcm_hw_free(struct snd_pcm_substream *substream)
 {
+	DINFO(AP_LOGNAME, "");
 	CHK_ERR(snd_pcm_lib_free_vmalloc_buffer(substream));
 
 	// Do additional Audio Path 'hw_free' callback
@@ -196,7 +198,7 @@ static int pcm_prepare(struct snd_pcm_substream *substream)
 	struct avirt_alsa_dev_group *group;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	DINFO("");
+	DINFO(AP_LOGNAME, "");
 
 	group = avirt_alsa_get_dev_group(substream->stream);
 	CHK_NULL(group);
@@ -226,7 +228,7 @@ static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct avirt_alsa_dev_group *group;
 
-	DINFO("");
+	DINFO(AP_LOGNAME, "");
 
 	group = avirt_alsa_get_dev_group(substream->stream);
 	CHK_NULL(group);
@@ -264,6 +266,8 @@ static snd_pcm_uframes_t pcm_pointer(struct snd_pcm_substream *substream)
 {
 	struct avirt_alsa_dev_group *group;
 
+	DINFO(AP_LOGNAME, "");
+
 	group = avirt_alsa_get_dev_group(substream->stream);
 	CHK_NULL(group);
 
@@ -289,6 +293,8 @@ static int pcm_get_time_info(
 	struct snd_pcm_audio_tstamp_report *audio_tstamp_report)
 {
 	struct avirt_alsa_dev_group *group;
+
+	DINFO(AP_LOGNAME, "");
 
 	group = avirt_alsa_get_dev_group(substream->stream);
 	CHK_NULL(group);
@@ -323,6 +329,7 @@ static int pcm_copy_user(struct snd_pcm_substream *substream, int channel,
 	//offset = frames_to_bytes(runtime, pos);
 
 	// Do additional Audio Path 'copy_user' callback
+	DINFO(AP_LOGNAME, "");
 	DO_AUDIOPATH_CB(copy_user, substream, channel, pos, src, count);
 
 	return 0;
@@ -344,6 +351,7 @@ static int pcm_copy_user(struct snd_pcm_substream *substream, int channel,
 static int pcm_copy_kernel(struct snd_pcm_substream *substream, int channel,
 			   unsigned long pos, void *buf, unsigned long count)
 {
+	DINFO(AP_LOGNAME, "");
 	DO_AUDIOPATH_CB(copy_kernel, substream, channel, pos, buf, count);
 	return 0;
 }
@@ -359,6 +367,7 @@ static int pcm_copy_kernel(struct snd_pcm_substream *substream, int channel,
  */
 int pcm_ack(struct snd_pcm_substream *substream)
 {
+	DINFO(AP_LOGNAME, "");
 	DO_AUDIOPATH_CB(ack, substream);
 	return 0;
 }
@@ -366,6 +375,7 @@ int pcm_ack(struct snd_pcm_substream *substream)
 static int pcm_silence(struct snd_pcm_substream *substream, int channel,
 		       snd_pcm_uframes_t pos, snd_pcm_uframes_t count)
 {
+	DINFO(AP_LOGNAME, "");
 	DO_AUDIOPATH_CB(fill_silence, substream, channel, pos, count);
 	return 0;
 }

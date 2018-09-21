@@ -12,6 +12,17 @@
 
 #include <sound/pcm.h>
 
+#define DINFO(ap, fmt, args...) \
+	printk(KERN_INFO "[%s] %d:%s " fmt "\n", ap, __LINE__, __func__, ##args)
+
+#define DERROR(ap, fmt, args...)                                      \
+	printk(KERN_ERR "[%s] %d:%s " fmt "\n", AP_LOGNAME, __LINE__, \
+	       __func__, ##args)
+
+#define DPRINT(ap, fmt, args...)                                        \
+	printk(KERN_DEBUG "[%s] %d:%s " fmt "\n", AP_LOGNAME, __LINE__, \
+	       __func__, ##args)
+
 /**
  * PCM buffer complete callback
  * 

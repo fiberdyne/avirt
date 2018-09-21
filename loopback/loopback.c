@@ -18,17 +18,9 @@ MODULE_LICENSE("GPL v2");
 
 #define AP_LOGNAME "LOOPAP"
 
-#define DERROR(fmt, args...)                                          \
-	printk(KERN_ERR "[%s] %d:%s " fmt "\n", AP_LOGNAME, __LINE__, \
-	       __func__, ##args)
-
-#define DINFO(fmt, args...)                                            \
-	printk(KERN_INFO "[%s] %d:%s " fmt "\n", AP_LOGNAME, __LINE__, \
-	       __func__, ##args)
-
-#define DPRINT(fmt, args...)                                            \
-	printk(KERN_DEBUG "[%s] %d:%s " fmt "\n", AP_LOGNAME, __LINE__, \
-	       __func__, ##args)
+#define AP_INFOK(fmt, args...) DINFO(AP_LOGNAME, fmt, ##args)
+#define AP_PRINTK(fmt, args...) DPRINT(AP_LOGNAME, fmt, ##args)
+#define AP_ERRORK(fmt, args...) DERROR(AP_LOGNAME, fmt, ##args)
 
 static struct avirt_coreinfo *coreinfo;
 
@@ -192,8 +184,8 @@ static int loopback_pcm_open(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct loopback_pcm *dpcm = runtime->private_data;
 
-	DINFO("Open\n%s\nrate: %d\nch: %d", substream->pcm->name, runtime->rate,
-	      runtime->channels);
+	AP_INFOK("Open\n%s\nrate: %d\nch: %d", substream->pcm->name,
+		 runtime->rate, runtime->channels);
 
 	err = systimer_create(substream);
 	if (err < 0)
@@ -207,7 +199,7 @@ static int loopback_pcm_close(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct loopback_pcm *dpcm = runtime->private_data;
 
-	DINFO("Close");
+	AP_INFOK("Close");
 
 	systimer_free(substream);
 	return 0;
@@ -216,14 +208,14 @@ static int loopback_pcm_close(struct snd_pcm_substream *substream)
 static snd_pcm_uframes_t
 	loopback_pcm_pointer(struct snd_pcm_substream *substream)
 {
-	DINFO("Pointer");
+	AP_INFOK("Pointer");
 
 	return systimer_pointer(substream);
 }
 
 static int loopback_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	DINFO("Trigger");
+	AP_INFOK("Trigger");
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -241,8 +233,8 @@ static int loopback_pcm_prepare(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct loopback_pcm *dpcm = runtime->private_data;
 
-	DINFO("Prepare");
-	DINFO("Runtime\nrate: %d\nch: %d", runtime->rate, runtime->channels);
+	AP_INFOK("Prepare");
+	AP_INFOK("Runtime\nrate: %d\nch: %d", runtime->rate, runtime->channels);
 
 	return systimer_prepare(substream);
 }
@@ -288,11 +280,11 @@ static int __init loopback_init(void)
 {
 	int err = 0;
 
-	DINFO("init()\n");
+	AP_INFOK("init()\n");
 
 	err = avirt_register_audiopath(&loopbackap_module, &coreinfo);
 	if ((err < 0) || (!coreinfo)) {
-		DERROR("%s: coreinfo is NULL!\n", __func__);
+		AP_ERRORK("%s: coreinfo is NULL!\n", __func__);
 		return err;
 	}
 
@@ -301,7 +293,7 @@ static int __init loopback_init(void)
 
 static void __exit loopback_exit(void)
 {
-	DINFO("exit()\n");
+	AP_INFOK("exit()\n");
 
 	avirt_deregister_audiopath(&loopbackap_module);
 }
