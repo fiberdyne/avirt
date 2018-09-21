@@ -162,10 +162,10 @@ static int avirt_probe(struct platform_device *devptr)
 static int avirt_remove(struct platform_device *devptr)
 {
 	snd_card_free(core.card);
-	CHK_NULL(coreinfo.playback.streams);
-	kfree(coreinfo.playback.streams);
-	CHK_NULL(coreinfo.capture.streams);
-	kfree(coreinfo.capture.streams);
+	if (coreinfo.playback.streams)
+		kfree(coreinfo.playback.streams);
+	if (coreinfo.capture.streams)
+		kfree(coreinfo.capture.streams);
 
 	return 0;
 }
