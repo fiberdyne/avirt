@@ -344,7 +344,7 @@ static int pcm_copy_kernel(struct snd_pcm_substream *substream, int channel,
  * Returns 0 on success or error code otherwise.
  *
  */
-int pcm_ack(struct snd_pcm_substream *substream)
+static int pcm_ack(struct snd_pcm_substream *substream)
 {
 	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
 			ack, substream);
