@@ -13,26 +13,28 @@
 #include <sound/pcm.h>
 #include <linux/configfs.h>
 
-#define MAX_NAME_LEN 32
+#define MAX_STREAMS 16
+#define MAX_NAME_LEN 80
 
 /**
- * PCM buffer complete callback
- *
- * These are called from the audiopath when a PCM buffer has completed, and
- * new data can be submitted/retrieved
+ * AVIRT Audio Path configure function type
+ * Each Audio Path registers this at avirt_audiopath_register time.
+ * It is then called by the core once AVIRT has been configured
  */
-typedef int (*avirt_buff_complete)(struct snd_pcm_substream *substream);
+typedef int (*avirt_audiopath_configure)(struct config_group *stream_group,
+					 unsigned int stream_count);
 
 /**
  * AVIRT Audio Path info
  */
 struct avirt_audiopath {
-	const char *uid; /* Unique identifier */
-	const char *name; /* Pretty name */
-	unsigned int version[3]; /* Version - Major.Minor.Ext */
-	struct snd_pcm_hardware *hw; /* ALSA PCM HW conf */
-	struct snd_pcm_ops *pcm_ops; /* ALSA PCM op table */
-	unsigned int blocksize; /* Audio frame size accepted */
+	const char *uid;		     /* Unique identifier */
+	const char *name;		     /* Pretty name */
+	unsigned int version[3];	     /* Version - Major.Minor.Ext */
+	struct snd_pcm_hardware *hw;	 /* ALSA PCM HW conf */
+	struct snd_pcm_ops *pcm_ops;	 /* ALSA PCM op table */
+	unsigned int blocksize;		     /* Audio frame size accepted */
+	avirt_audiopath_configure configure; /* Configure callback function */
 
 	void *context;
 };
@@ -41,17 +43,12 @@ struct avirt_audiopath {
  * Audio stream configuration
  */
 struct avirt_stream {
-	struct snd_pcm *pcm; /* Stream PCM device */
-	unsigned int channels; /* Stream channel count */
+	char name[MAX_NAME_LEN]; /* Stream name */
+	char map[MAX_NAME_LEN];  /* Stream Audio Path mapping */
+	unsigned int channels;   /* Stream channel count */
+	unsigned int device;     /* Stream PCM device no. */
+	unsigned int direction;  /* Stream direction */
 	struct config_item item; /* configfs item reference */
-};
-
-/**
- * Collection of audio streams
- */
-struct avirt_stream_group {
-	struct avirt_stream *streams; /* AVIRT stream array */
-	unsigned int devices; /* Number of stream devices */
 };
 
 /**
@@ -59,11 +56,6 @@ struct avirt_stream_group {
  */
 struct avirt_coreinfo {
 	unsigned int version[3];
-
-	struct avirt_stream_group playback;
-	struct avirt_stream_group capture;
-
-	avirt_buff_complete pcm_buff_complete;
 };
 
 /**
@@ -90,12 +82,30 @@ int avirt_audiopath_deregister(struct avirt_audiopath *audiopath);
 struct avirt_audiopath *avirt_audiopath_get(const char *uid);
 
 /**
- * avirt_subscribe_stream - subscribe the Audio Path to the given streams
- * @audiopath: Audio Path to subscribe for
- * @streams: The streams to subscribe the Audio Path to
- * return: 0 on success or error code otherwise
+ * avirt_stream_count - get the stream count for the given direction
+ * @direction: The direction to get the stream count for
+ * @return: The stream count
  */
-int avirt_subscribe_stream(struct avirt_audiopath *audiopath,
-			   const char **streams);
+int avirt_stream_count(unsigned int direction);
+
+/**
+ * avirt_stream_from_config_item - Convert a config_item to an avirt_stream
+ * @item: The config_item to convert from
+ * @return: The item's avirt_stream if successful, NULL otherwise
+ */
+static inline struct avirt_stream *
+avirt_stream_from_config_item(struct config_item *item)
+{
+	return item ? container_of(item, struct avirt_stream, item) : NULL;
+}
+
+/**
+ * avirt_pcm_period_elapsed - PCM buffer complete callback
+ * @substream: pointer to ALSA PCM substream
+ *
+ * This should be called from a child Audio Path once it has finished processing
+ * the PCM buffer
+ */
+void avirt_pcm_period_elapsed(struct snd_pcm_substream *substream);
 
 #endif // __AVIRT_CORE_H__

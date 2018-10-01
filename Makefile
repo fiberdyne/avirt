@@ -2,6 +2,7 @@
 obj-$(CONFIG_AVIRT) += avirt_core.o
 avirt_core-y := core.o
 avirt_core-y += alsa-pcm.o
+avirt_core-y += configfs.o
 
 ifeq ($(CONFIG_AVIRT_BUILDLOCAL),)
 	CCFLAGS_AVIRT := "drivers/staging/"

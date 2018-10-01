@@ -7,46 +7,30 @@
  * Copyright (C) 2010-2018 Fiberdyne Systems Pty Ltd
  */
 
-#include "alsa-pcm.h"
-#include "utils.h"
+#include "core_internal.h"
 
-#define DO_AUDIOPATH_CB(ap, callback, substream, ...)                \
-	do {                                                         \
-		if (ap->pcm_ops->callback) {                         \
-			return ap->pcm_ops->callback((substream),    \
-						     ##__VA_ARGS__); \
-		}                                                    \
+#define DO_AUDIOPATH_CB(ap, callback, substream, ...)                          \
+	do {                                                                   \
+		if ((ap)->pcm_ops->callback) {                                 \
+			return (ap)->pcm_ops->callback((substream),            \
+						       ##__VA_ARGS__);         \
+		}                                                              \
 	} while (0)
 
 /**
- * pcm_buff_complete_cb - PCM buffer complete callback
+ * avirt_pcm_period_elapsed - PCM buffer complete callback
  * @substreamid: pointer to ALSA PCM substream
- * @return 0 on success or error code otherwise
  *
  * This should be called from a child Audio Path once it has finished processing
  * the pcm buffer
  */
-int pcm_buff_complete_cb(struct snd_pcm_substream *substream)
+void avirt_pcm_period_elapsed(struct snd_pcm_substream *substream)
 {
 	// Notify ALSA middle layer of the elapsed period boundary
 	snd_pcm_period_elapsed(substream);
-
-	return 0;
 }
+EXPORT_SYMBOL_GPL(avirt_pcm_period_elapsed);
 
-static struct avirt_stream_group *avirt_stream_get_group(int direction)
-{
-	switch (direction) {
-	case SNDRV_PCM_STREAM_PLAYBACK:
-		return &coreinfo.playback;
-	case SNDRV_PCM_STREAM_CAPTURE:
-		return &coreinfo.capture;
-	default:
-		pr_err("[%s] Direction must be SNDRV_PCM_STREAM_XXX!",
-		       __func__);
-		return NULL;
-	}
-}
 
 /*******************************************************************************
  * ALSA PCM Callbacks
@@ -63,13 +47,14 @@ static struct avirt_stream_group *avirt_stream_get_group(int direction)
 static int pcm_open(struct snd_pcm_substream *substream)
 {
 	struct avirt_audiopath *audiopath;
-	struct avirt_stream_group *group;
+	struct avirt_stream *stream;
 	struct snd_pcm_hardware *hw;
 	unsigned int bytes_per_sample = 0, blocksize = 0, chans = 0;
 
 	char *uid = "ap_fddsp"; // TD MF: Make this dynamic!
 	audiopath = avirt_audiopath_get(uid);
-	CHK_NULL_V(audiopath, "Cannot find Audio Path uid: '%s'!", uid);
+	CHK_NULL_V(audiopath, -EFAULT, "Cannot find Audio Path uid: '%s'!",
+		   uid);
 	substream->private_data = audiopath;
 
 	blocksize = audiopath->blocksize;
@@ -87,16 +72,12 @@ static int pcm_open(struct snd_pcm_substream *substream)
 		return -EINVAL;
 	}
 
-	// Get device group (playback/capture)
-	group = avirt_stream_get_group(substream->stream);
-	CHK_NULL(group);
-
-	// Check if substream id is valid
-	if (substream->pcm->device >= group->devices)
-		return -1;
+	stream = __avirt_stream_find_by_device(substream->pcm->device);
+	if (IS_ERR_VALUE(stream) || !stream)
+		return PTR_ERR(stream);
 
 	// Setup remaining hw properties
-	chans = group->streams[substream->pcm->device].channels;
+	chans = stream->channels;
 	hw->channels_min = chans;
 	hw->channels_max = chans;
 	hw->buffer_bytes_max =
@@ -140,18 +121,17 @@ static int pcm_close(struct snd_pcm_substream *substream)
 static int pcm_hw_params(struct snd_pcm_substream *substream,
 			 struct snd_pcm_hw_params *hw_params)
 {
-	int channels, err;
+	int err;
 	size_t bufsz;
 	struct avirt_audiopath *audiopath;
-	struct avirt_stream_group *group;
+	struct avirt_stream *stream;
 
-	group = avirt_stream_get_group(substream->stream);
-	CHK_NULL(group);
+	stream = __avirt_stream_find_by_device(substream->pcm->device);
+	if (IS_ERR_VALUE(stream) || !stream)
+		return PTR_ERR(stream);
 
-	channels = group->streams[substream->pcm->device].channels;
-
-	if ((params_channels(hw_params) > channels) ||
-	    (params_channels(hw_params) < channels)) {
+	if ((params_channels(hw_params) > stream->channels)
+	    || (params_channels(hw_params) < stream->channels)) {
 		pr_err("Requested number of channels not supported.\n");
 		return -EINVAL;
 	}
@@ -300,11 +280,11 @@ static int pcm_copy_user(struct snd_pcm_substream *substream, int channel,
 			 snd_pcm_uframes_t pos, void __user *src,
 			 snd_pcm_uframes_t count)
 {
-	//struct snd_pcm_runtime *runtime;
-	//int offset;
+	// struct snd_pcm_runtime *runtime;
+	// int offset;
 
-	//runtime = substream->runtime;
-	//offset = frames_to_bytes(runtime, pos);
+	// runtime = substream->runtime;
+	// offset = frames_to_bytes(runtime, pos);
 
 	// Do additional Audio Path 'copy_user' callback
 	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),

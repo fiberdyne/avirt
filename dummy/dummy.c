@@ -130,7 +130,7 @@ static void dummy_systimer_callback(struct timer_list *t)
 	dpcm->elapsed = 0;
 	spin_unlock_irqrestore(&dpcm->lock, flags);
 	if (elapsed)
-		coreinfo->pcm_buff_complete(dpcm->substream);
+		avirt_pcm_period_elapsed(dpcm->substream);
 }
 
 static snd_pcm_uframes_t
@@ -231,6 +231,25 @@ static struct snd_pcm_ops dummyap_pcm_ops = {
 /*******************************************************************************
  * Dummy Audio Path AVIRT registration
  ******************************************************************************/
+int dummy_configure(struct config_group *avirt_stream_group,
+		    unsigned int stream_count)
+{
+	// Do something with streams
+
+	struct list_head *entry;
+	list_for_each(entry, &avirt_stream_group->cg_children)
+	{
+		struct config_item *item =
+			container_of(entry, struct config_item, ci_entry);
+		struct avirt_stream *stream =
+			avirt_stream_from_config_item(item);
+		pr_info("%s: stream name:%s device:%d channels:%d\n", __func__,
+			stream->name, stream->device, stream->channels);
+	}
+
+	return 0;
+}
+
 static struct snd_pcm_hardware dummyap_hw = {
 	.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	.info = (SNDRV_PCM_INFO_INTERLEAVED // Channel interleaved audio
@@ -250,6 +269,7 @@ static struct avirt_audiopath dummyap_module = {
 	.hw = &dummyap_hw,
 	.pcm_ops = &dummyap_pcm_ops,
 	.blocksize = DUMMY_BLOCKSIZE,
+	.configure = dummy_configure,
 };
 
 static int __init dummy_init(void)
