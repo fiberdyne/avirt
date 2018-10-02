@@ -32,10 +32,11 @@ static int pcm_constructor(struct snd_card *card)
 	for (i = 0; i < _driver->playback.devices; i++) {
 		CHK_ERR(snd_pcm_new(card,
 				    _driver->playback.config[i].devicename, i,
-				    1, 0, &pcm));
+				    1, 1, &pcm));
 
 		/** Register driver callbacks */
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &pcm_ops);
+		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &pcm_ops);
 
 		pcm->info_flags = 0;
 		strcpy(pcm->name, _driver->playback.config[i].devicename);
@@ -112,9 +113,8 @@ struct avirt_alsa_dev_group *avirt_alsa_get_dev_group(int direction)
 
 	switch (direction) {
 	case SNDRV_PCM_STREAM_PLAYBACK:
-		return &_driver->playback;
 	case SNDRV_PCM_STREAM_CAPTURE:
-		return &_driver->capture;
+		return &_driver->playback;
 	default:
 		pr_err("[%s] Direction must be SNDRV_PCM_STREAM_XXX!",
 		       __func__);

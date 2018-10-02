@@ -19,6 +19,12 @@ MODULE_AUTHOR("MFARRUGI <mark.farrugia@fiberdyne.com.au>");
 MODULE_DESCRIPTION("A configurable virtual soundcard");
 MODULE_LICENSE("GPL v2");
 
+#define AP_LOGNAME "CORE"
+
+#define D_INFOK(fmt, args...) DINFO(AP_LOGNAME, fmt, ##args)
+#define D_PRINTK(fmt, args...) DPRINT(AP_LOGNAME, fmt, ##args)
+#define D_ERRORK(fmt, args...) DERROR(AP_LOGNAME, fmt, ##args)
+
 #define SND_AVIRTUAL_DRIVER "snd_avirt"
 #define MAX_PCM_DEVS 8
 #define MAX_AUDIOPATHS 4
@@ -350,8 +356,8 @@ int avirt_register_audiopath(struct avirt_audiopath *audiopath,
 	audiopath_obj->path = audiopath;
 
 	audiopath->context = audiopath_obj;
-	pr_info("Registered new Audio Path: %s\n", audiopath->name);
-	pr_info("\tBlocksize: %d, Periods: %d\n", audiopath->blocksize,
+	D_INFOK("Registered new Audio Path: %s", audiopath->name);
+	D_INFOK("\tBlocksize: %d, Periods: %d", audiopath->blocksize,
 		audiopath->hw->periods_max);
 	list_add_tail(&audiopath_obj->list, &audiopath_list);
 
@@ -405,9 +411,9 @@ static void avirt_unregister_all(void)
 static int __init core_init(void)
 {
 	int err;
-
-	pr_info("Alsa Virtual Sound Driver avirt-%d.%d.%d\n",
-		coreinfo.version[0], coreinfo.version[1], coreinfo.version[2]);
+	D_INFOK("Starting new core\n\n\n\n");
+	D_INFOK("Alsa Virtual Sound Driver avirt-%d.%d.%d", coreinfo.version[0],
+		coreinfo.version[1], coreinfo.version[2]);
 
 	// Initialize audiopaths linked list
 	INIT_LIST_HEAD(&audiopath_list);
@@ -466,7 +472,7 @@ static void __exit core_exit(void)
 	class_destroy(core.avirt_class);
 
 	avirt_unregister_all();
-
+	D_INFOK("Exit begin!");
 	pr_info("playback_num: %d, capture_num: %d\n", playback_num,
 		capture_num);
 

@@ -162,6 +162,7 @@ void loopback_callback(struct timer_list *tlist)
 	unsigned long flags;
 	int elapsed = 0;
 
+	AP_INFOK("");
 	spin_lock_irqsave(&dpcm->lock, flags);
 
 	// Perform copy from playback to capture
@@ -169,6 +170,7 @@ void loopback_callback(struct timer_list *tlist)
 	systimer_rearm(dpcm);
 	elapsed = dpcm->elapsed;
 	dpcm->elapsed = 0;
+
 	spin_unlock_irqrestore(&dpcm->lock, flags);
 	if (elapsed)
 		coreinfo->pcm_buff_complete(dpcm->substream);
@@ -183,9 +185,6 @@ static int loopback_pcm_open(struct snd_pcm_substream *substream)
 
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct loopback_pcm *dpcm = runtime->private_data;
-
-	AP_INFOK("Open\n%s\nrate: %d\nch: %d", substream->pcm->name,
-		 runtime->rate, runtime->channels);
 
 	err = systimer_create(substream);
 	if (err < 0)
@@ -233,8 +232,10 @@ static int loopback_pcm_prepare(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct loopback_pcm *dpcm = runtime->private_data;
 
-	AP_INFOK("Prepare");
-	AP_INFOK("Runtime\nrate: %d\nch: %d", runtime->rate, runtime->channels);
+	AP_INFOK("%s\n%s\n%d\n%d", substream->pcm->name,
+		 substream->stream == SNDRV_PCM_STREAM_PLAYBACK ? "PLAYBACK" :
+								  "CAPTURE",
+		 runtime->rate, runtime->channels);
 
 	return systimer_prepare(substream);
 }
@@ -255,10 +256,15 @@ static struct snd_pcm_hardware loopbackap_hw = {
 	.info = (SNDRV_PCM_INFO_INTERLEAVED // Channel interleaved audio
 		 | SNDRV_PCM_INFO_BLOCK_TRANSFER | SNDRV_PCM_INFO_MMAP |
 		 SNDRV_PCM_INFO_MMAP_VALID),
+	/*
 	.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
 		 SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |
 		 SNDRV_PCM_RATE_48000,
 	.rate_min = 8000,
+	.rate_max = 48000,
+	*/
+	.rates = SNDRV_PCM_RATE_48000,
+	.rate_min = 48000,
 	.rate_max = 48000,
 	.channels_min = 1,
 	.channels_max = 8,
@@ -280,7 +286,7 @@ static int __init loopback_init(void)
 {
 	int err = 0;
 
-	AP_INFOK("init()\n");
+	AP_INFOK("init()");
 
 	err = avirt_register_audiopath(&loopbackap_module, &coreinfo);
 	if ((err < 0) || (!coreinfo)) {
@@ -293,7 +299,7 @@ static int __init loopback_init(void)
 
 static void __exit loopback_exit(void)
 {
-	AP_INFOK("exit()\n");
+	AP_INFOK("loopback: exit()");
 
 	avirt_deregister_audiopath(&loopbackap_module);
 }

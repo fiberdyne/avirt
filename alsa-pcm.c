@@ -59,8 +59,12 @@ static int configure_pcm(struct snd_pcm_substream *substream)
 	CHK_NULL(group);
 
 	// Check if substream id is valid
-	if (substream->pcm->device >= group->devices)
+	pr_info("%d substream is < %d", substream->pcm->device, group->devices);
+	if (substream->pcm->device >= group->devices) {
+		pr_err("%s %d substream id is invalid expecting %d", __func__,
+		       substream->pcm->device, group->devices);
 		return -1;
+	}
 
 	// Setup remaining hw properties
 	config = &group->config[substream->pcm->device];
@@ -158,7 +162,7 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	// Do additional Audio Path 'hw_params' callback
-	// DO_AUDIOPATH_CB(hw_params, substream, hw_params);
+	DO_AUDIOPATH_CB(hw_params, substream, hw_params);
 
 	return 0;
 }
@@ -178,7 +182,7 @@ static int pcm_hw_free(struct snd_pcm_substream *substream)
 	CHK_ERR(snd_pcm_lib_free_vmalloc_buffer(substream));
 
 	// Do additional Audio Path 'hw_free' callback
-	// DO_AUDIOPATH_CB(hw_free, substream);
+	DO_AUDIOPATH_CB(hw_free, substream);
 
 	return 0;
 }
