@@ -173,7 +173,25 @@ void loopback_callback(struct timer_list *tlist)
 
 	spin_unlock_irqrestore(&dpcm->lock, flags);
 	if (elapsed)
-		coreinfo->pcm_buff_complete(dpcm->substream);
+		avirt_pcm_period_elapsed(dpcm->substream);
+}
+
+int loopback_configure(struct config_group *avirt_stream_group,
+		       unsigned int stream_count)
+{
+	// Do something with streams
+
+	struct list_head *entry;
+	list_for_each (entry, &avirt_stream_group->cg_children) {
+		struct config_item *item =
+			container_of(entry, struct config_item, ci_entry);
+		struct avirt_stream *stream =
+			avirt_stream_from_config_item(item);
+		pr_info("%s: stream name:%s device:%d channels:%d\n", __func__,
+			stream->name, stream->device, stream->channels);
+	}
+
+	return 0;
 }
 
 /*******************************************************************************
@@ -274,12 +292,13 @@ static struct snd_pcm_hardware loopbackap_hw = {
 };
 
 static struct avirt_audiopath loopbackap_module = {
+	.uid = "ap_loopback",
 	.name = "Loopback Audio Path",
 	.version = { 0, 0, 1 },
-	.value = 10,
 	.hw = &loopbackap_hw,
 	.pcm_ops = &loopbackap_pcm_ops,
 	.blocksize = 512,
+	.configure = loopback_configure,
 };
 
 static int __init loopback_init(void)
@@ -288,7 +307,7 @@ static int __init loopback_init(void)
 
 	AP_INFOK("init()");
 
-	err = avirt_register_audiopath(&loopbackap_module, &coreinfo);
+	err = avirt_audiopath_register(&loopbackap_module, &coreinfo);
 	if ((err < 0) || (!coreinfo)) {
 		AP_ERRORK("%s: coreinfo is NULL!\n", __func__);
 		return err;
@@ -301,7 +320,7 @@ static void __exit loopback_exit(void)
 {
 	AP_INFOK("loopback: exit()");
 
-	avirt_deregister_audiopath(&loopbackap_module);
+	avirt_audiopath_deregister(&loopbackap_module);
 }
 
 module_init(loopback_init);

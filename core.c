@@ -8,11 +8,12 @@
  */
 
 #include <linux/module.h>
-#include <linux/slab.h>
-#include <linux/platform_device.h>
+#include <linux/string.h>
+#include <sound/core.h>
+#include <sound/initval.h>
+#include <avirt/core.h>
 
-#include "avirt/core.h"
-#include "alsa.h"
+#include "core_internal.h"
 
 MODULE_AUTHOR("JOSHANNE <james.oshannessy@fiberdyne.com.au>");
 MODULE_AUTHOR("MFARRUGI <mark.farrugia@fiberdyne.com.au>");
@@ -26,144 +27,18 @@ MODULE_LICENSE("GPL v2");
 #define D_ERRORK(fmt, args...) DERROR(AP_LOGNAME, fmt, ##args)
 
 #define SND_AVIRTUAL_DRIVER "snd_avirt"
-#define MAX_PCM_DEVS 8
-#define MAX_AUDIOPATHS 4
-#define DEFAULT_FILE_PERMS 0644
 
-/* Number of playback devices to create (max = MAX_PCM_DEVS) */
-static unsigned playback_num = 0;
-/* Number of capture devices to create (max = MAX_PCM_DEVS) */
-static unsigned capture_num = 0;
-/* Names per playback device */
-static char *playback_names[MAX_PCM_DEVS];
-/* Names per capture device */
-static char *capture_names[MAX_PCM_DEVS];
-/* Channels per playback device */
-static unsigned playback_chans[MAX_PCM_DEVS];
-/* Channels per capture device */
-static unsigned capture_chans[MAX_PCM_DEVS];
+extern struct snd_pcm_ops pcm_ops;
 
-module_param(playback_num, int, DEFAULT_FILE_PERMS);
-MODULE_PARM_DESC(playback_num,
-		 "Number of playback devices to create (max = MAX_PCM_DEVS)");
-module_param(capture_num, int, DEFAULT_FILE_PERMS);
-MODULE_PARM_DESC(capture_num,
-		 "Number of capture devices to create (max = MAX_PCM_DEVS)");
-module_param_array(playback_names, charp, NULL, DEFAULT_FILE_PERMS);
-MODULE_PARM_DESC(playback_names, "Names per playback device");
-module_param_array(capture_names, charp, NULL, DEFAULT_FILE_PERMS);
-MODULE_PARM_DESC(capture_names, "Names per capture device");
-module_param_array(playback_chans, int, NULL, DEFAULT_FILE_PERMS);
-MODULE_PARM_DESC(playback_chans, "Channels per playback device");
-module_param_array(capture_chans, int, NULL, DEFAULT_FILE_PERMS);
-MODULE_PARM_DESC(capture_chans, "Channels per capture device");
+static struct avirt_core core = {
+	.stream_count = 0,
+};
 
-static struct avirt_core {
-	struct device *dev;
-
-	struct class *avirt_class;
-	struct platform_device *platform_dev;
-} core;
-
-static struct avirt_coreinfo coreinfo = {
+struct avirt_coreinfo coreinfo = {
 	.version = { 0, 0, 1 },
-	.pcm_buff_complete = pcm_buff_complete_cb,
 };
 
-static struct list_head audiopath_list;
-
-/**
- * avirt_probe - Register ALSA soundcard
- * @devptr: Platform driver device
- * @return: 0 on success or error code otherwise
- */
-static int avirt_probe(struct platform_device *devptr)
-{
-	// struct avirt_alsa_dev_config capture_config[MAX_PCM_DEVS];
-	struct avirt_alsa_dev_config playback_config[MAX_PCM_DEVS];
-	int err = 0, i = 0;
-
-	if (playback_num == 0 && capture_num == 0) {
-		pr_err("playback_num or capture_num must be greater than 0!\n");
-		return -EINVAL;
-	}
-
-	coreinfo.playback_num = playback_num;
-	coreinfo.capture_num = capture_num;
-
-	err = avirt_alsa_init();
-	if (err < 0)
-		return err;
-
-	// Set up playback
-	for (i = 0; i < playback_num; i++) {
-		if (!playback_names[i]) {
-			pr_err("Playback config devicename is NULL for idx=%d\n",
-			       i);
-			return -EINVAL;
-		}
-		memcpy((char *)playback_config[i].devicename, playback_names[i],
-		       MAX_NAME_LEN);
-		if (playback_chans[i] == 0) {
-			pr_err("Playback config channels is 0 for idx=%d\n", i);
-			return -EINVAL;
-		}
-		playback_config[i].channels = playback_chans[i];
-	}
-	err = avirt_alsa_configure_pcm(playback_config,
-				       SNDRV_PCM_STREAM_PLAYBACK, playback_num);
-	if (err < 0)
-		return err;
-
-// Does not work yet!
-#if 0
-	// Set up capture
-	for (i = 0; i < capture_num; i++) {
-		if (!capture_names[i]) {
-			pr_err("Capture config devicename is NULL for idx=%d",
-			       i);
-			return -EINVAL;
-		}
-		memcpy((char *)capture_config[i].devicename, capture_names[i],
-		       255);
-
-		if (capture_chans[i] == 0) {
-			pr_err("Capture config channels is 0 for idx=%d");
-			return -EINVAL;
-		}
-		capture_config[i].channels = capture_chans[i];
-	}
-	err = avirt_alsa_configure_pcm(capture_config, SNDRV_PCM_STREAM_CAPTURE, capture_num);
-	if (err < 0)
-		return err;
-#endif
-
-	// Register for ALSA
-	CHK_ERR(avirt_alsa_register(devptr));
-
-	return err;
-}
-
-/**
- * avirt_remove - Deregister ALSA soundcard
- * @devptr: Platform driver device
- * @return: 0 on success or error code otherwise
- */
-static int avirt_remove(struct platform_device *devptr)
-{
-	avirt_alsa_deregister();
-
-	return 0;
-}
-
-static struct platform_driver avirt_driver = {
-	.probe = avirt_probe,
-	.remove = avirt_remove,
-	.driver =
-		{
-			.name = SND_AVIRTUAL_DRIVER,
-		},
-};
+static LIST_HEAD(audiopath_list);
 
 struct avirt_audiopath_obj {
 	struct kobject kobj;
@@ -264,6 +139,7 @@ static ssize_t audiopath_version_show(struct avirt_audiopath_obj *audiopath_obj,
 				      char *buf)
 {
 	struct avirt_audiopath *audiopath = audiopath_obj->path;
+
 	return sprintf(buf, "%d.%d.%d\n", audiopath->version[0],
 		       audiopath->version[1], audiopath->version[2]);
 }
@@ -287,13 +163,13 @@ static struct kobj_type avirt_audiopath_ktype = {
 
 /**
  * create_avirt_audiopath_obj - creates an Audio Path object
- * @name: name of the Audio Path
+ * @uid: Unique ID of the Audio Path
  *
  * This creates an Audio Path object and assigns the kset and registers
  * it with sysfs.
  * @return: Pointer to the Audio Path object or NULL if it failed.
  */
-static struct avirt_audiopath_obj *create_avirt_audiopath_obj(const char *name)
+static struct avirt_audiopath_obj *create_avirt_audiopath_obj(const char *uid)
 {
 	struct avirt_audiopath_obj *avirt_audiopath;
 	int retval;
@@ -303,7 +179,7 @@ static struct avirt_audiopath_obj *create_avirt_audiopath_obj(const char *name)
 		return NULL;
 	avirt_audiopath->kobj.kset = avirt_audiopath_kset;
 	retval = kobject_init_and_add(&avirt_audiopath->kobj,
-				      &avirt_audiopath_ktype, kobj, "%s", name);
+				      &avirt_audiopath_ktype, kobj, "%s", uid);
 	if (retval) {
 		kobject_put(&avirt_audiopath->kobj);
 		return NULL;
@@ -322,23 +198,30 @@ static void destroy_avirt_audiopath_obj(struct avirt_audiopath_obj *p)
 }
 
 /**
- * avirt_get_current_audiopath - retrieves the current Audio Path
- * @return: Current Audio Path
+ * avirt_audiopath_get - retrieves the Audio Path by its UID
+ * @uid: Unique ID for the Audio Path
+ * @return: Corresponding Audio Path
  */
-struct avirt_audiopath *avirt_get_current_audiopath()
+struct avirt_audiopath *avirt_audiopath_get(const char *uid)
 {
-	struct avirt_audiopath_obj *ap_obj = list_entry(
-		audiopath_list.next, struct avirt_audiopath_obj, list);
-	return ap_obj->path;
+	struct avirt_audiopath_obj *ap_obj;
+
+	list_for_each_entry (ap_obj, &audiopath_list, list) {
+		// pr_info("get_ap %s\n", ap_obj->path->uid);
+		if (!strcmp(ap_obj->path->uid, uid))
+			return ap_obj->path;
+	}
+
+	return NULL;
 }
 
 /**
- * avirt_register_audiopath - register Audio Path with ALSA virtual driver
+ * avirt_audiopath_register - register Audio Path with ALSA virtual driver
  * @audiopath: Audio Path to be registered
  * @core: ALSA virtual driver core info
  * @return: 0 on success or error code otherwise
  */
-int avirt_register_audiopath(struct avirt_audiopath *audiopath,
+int avirt_audiopath_register(struct avirt_audiopath *audiopath,
 			     struct avirt_coreinfo **info)
 {
 	struct avirt_audiopath_obj *audiopath_obj;
@@ -348,7 +231,7 @@ int avirt_register_audiopath(struct avirt_audiopath *audiopath,
 		return -EINVAL;
 	}
 
-	audiopath_obj = create_avirt_audiopath_obj(audiopath->name);
+	audiopath_obj = create_avirt_audiopath_obj(audiopath->uid);
 	if (!audiopath_obj) {
 		pr_info("failed to alloc driver object\n");
 		return -ENOMEM;
@@ -365,14 +248,14 @@ int avirt_register_audiopath(struct avirt_audiopath *audiopath,
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(avirt_register_audiopath);
+EXPORT_SYMBOL_GPL(avirt_audiopath_register);
 
 /**
- * avirt_deregister_audiopath - deregister Audio Path with ALSA virtual driver
+ * avirt_audiopath_deregister - deregister Audio Path with ALSA virtual driver
  * @audiopath: Audio Path to be deregistered
  * @return: 0 on success or error code otherwise
  */
-int avirt_deregister_audiopath(struct avirt_audiopath *audiopath)
+int avirt_audiopath_deregister(struct avirt_audiopath *audiopath)
 {
 	struct avirt_audiopath_obj *audiopath_obj;
 
@@ -390,19 +273,128 @@ int avirt_deregister_audiopath(struct avirt_audiopath *audiopath)
 
 	list_del(&audiopath_obj->list);
 	destroy_avirt_audiopath_obj(audiopath_obj);
-	pr_info("Deregistered Audio Path %s\n", audiopath->name);
+	pr_info("Deregistered Audio Path %s\n", audiopath->uid);
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(avirt_deregister_audiopath);
+EXPORT_SYMBOL_GPL(avirt_audiopath_deregister);
 
 /**
- * avirt_unregister_all - Unregister the platform device driver
+ * avirt_stream_count - get the stream count for the given direction
+ * @direction: The direction to get the stream count for
+ * @return: The stream count
  */
-static void avirt_unregister_all(void)
+int avirt_stream_count(unsigned int direction)
 {
-	platform_device_unregister(core.platform_dev);
-	platform_driver_unregister(&avirt_driver);
+	struct list_head *entry;
+	struct config_item *item;
+	struct avirt_stream *stream;
+	unsigned int count = 0;
+
+	if (direction > 1)
+		return -ERANGE;
+
+	list_for_each (entry, &core.stream_group->cg_children) {
+		item = container_of(entry, struct config_item, ci_entry);
+		stream = avirt_stream_from_config_item(item);
+		if (!stream)
+			return -EFAULT;
+		if (stream->direction == direction)
+			count++;
+	}
+
+	return count;
+}
+EXPORT_SYMBOL_GPL(avirt_stream_count);
+
+/**
+ * __avirt_stream_create - Create audio stream, including it's ALSA PCM device
+ * @name: The name designated to the audio stream
+ * @direction: The PCM direction (SNDRV_PCM_STREAM_PLAYBACK or
+ *             SNDRV_PCM_STREAM_CAPTURE)
+ * @return: The newly created audio stream if successful, or an error pointer
+ */
+struct avirt_stream *__avirt_stream_create(const char *name, int direction)
+{
+	struct snd_pcm *pcm;
+	struct avirt_stream *stream;
+	int err;
+	D_INFOK("Starting new core\n\n\n\n");
+	D_INFOK("Alsa Virtual Sound Driver avirt-%d.%d.%d", coreinfo.version[0],
+		coreinfo.version[1], coreinfo.version[2]);
+
+	stream = kzalloc(sizeof(*stream), GFP_KERNEL);
+	if (!stream)
+		return ERR_PTR(-ENOMEM);
+
+	strcpy(stream->name, name);
+	strcpy(stream->map, "ap_fddsp");
+	stream->channels = 0;
+	stream->direction = direction;
+	stream->device = core.stream_count++;
+
+	err = snd_pcm_new(core.card, name, stream->device, !direction,
+			  direction, &pcm);
+	if (err < 0)
+		return ERR_PTR(err);
+
+	// TD MF: IMPORTANT: NEED TO TEST >8 PCM DEVICES ON A
+	// CARD!
+	/** Register driver callbacks */
+	snd_pcm_set_ops(pcm, direction, &pcm_ops);
+
+	pcm->info_flags = 0;
+	strcpy(pcm->name, name);
+
+	pr_info("%s [ARGS] name: %s device:%d\n", __func__, name,
+		stream->device);
+
+	// coreinfo.streams[stream_idx] = stream;
+
+	return stream;
+}
+
+int __avirt_card_register(void)
+{
+	int err = 0;
+
+	struct avirt_audiopath_obj *ap_obj;
+	list_for_each_entry (ap_obj, &audiopath_list, list) {
+		pr_info("Calling configure for AP uid: %s\n",
+			ap_obj->path->uid);
+		ap_obj->path->configure(core.stream_group, core.stream_count);
+	}
+
+	err = snd_card_register(core.card);
+	if (err < 0) {
+		pr_err("Sound card registration failed!");
+		snd_card_free(core.card);
+	}
+
+	return err;
+}
+
+struct avirt_stream *__avirt_stream_find_by_device(unsigned int device)
+{
+	struct avirt_stream *stream;
+	struct config_item *item;
+	struct list_head *entry;
+
+	if (device >= core.stream_count) {
+		pr_err("Stream device number is greater than number streams available\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	list_for_each (entry, &core.stream_group->cg_children) {
+		item = container_of(entry, struct config_item, ci_entry);
+		stream = avirt_stream_from_config_item(item);
+		if (!stream)
+			return ERR_PTR(-EFAULT);
+		if (stream->device == device)
+			return stream;
+	}
+
+	return NULL;
 }
 
 /**
@@ -411,30 +403,14 @@ static void avirt_unregister_all(void)
 static int __init core_init(void)
 {
 	int err;
-	D_INFOK("Starting new core\n\n\n\n");
-	D_INFOK("Alsa Virtual Sound Driver avirt-%d.%d.%d", coreinfo.version[0],
-		coreinfo.version[1], coreinfo.version[2]);
 
-	// Initialize audiopaths linked list
-	INIT_LIST_HEAD(&audiopath_list);
-
-	err = platform_driver_register(&avirt_driver);
-	if (err < 0)
-		return err;
-
-	core.platform_dev = platform_device_register_simple(SND_AVIRTUAL_DRIVER,
-							    0, NULL, 0);
-	if (IS_ERR(core.platform_dev)) {
-		err = PTR_ERR(core.platform_dev);
-		pr_err("platform_dev error [%d]!\n", err);
-		goto exit_platform_device;
-	}
+	pr_info("Alsa Virtual Sound Driver avirt-%d.%d.%d\n",
+		coreinfo.version[0], coreinfo.version[1], coreinfo.version[2]);
 
 	core.avirt_class = class_create(THIS_MODULE, SND_AVIRTUAL_DRIVER);
 	if (IS_ERR(core.avirt_class)) {
 		pr_err("No udev support\n");
-		err = PTR_ERR(core.avirt_class);
-		goto exit_bus;
+		return PTR_ERR(core.avirt_class);
 	}
 
 	core.dev = device_create(core.avirt_class, NULL, 0, NULL, "avirtcore");
@@ -443,22 +419,38 @@ static int __init core_init(void)
 		goto exit_class;
 	}
 
+	// Create the card instance
+	err = snd_card_new(core.dev, SNDRV_DEFAULT_IDX1, "avirt", THIS_MODULE,
+			   0, &core.card);
+	if (err < 0) {
+		pr_err("Failed to create sound card");
+		goto exit_class_container;
+	}
+
+	strcpy(core.card->driver, "avirt-alsa-device");
+	strcpy(core.card->shortname, "avirt");
+	strcpy(core.card->longname, "A virtual sound card driver for ALSA");
+
 	avirt_audiopath_kset =
 		kset_create_and_add("audiopaths", NULL, &core.dev->kobj);
 	if (!avirt_audiopath_kset) {
 		err = -ENOMEM;
-		goto exit_class_container;
+		goto exit_snd_card;
 	}
+
+	err = __avirt_configfs_init(&core);
+	if (err < 0)
+		goto exit_snd_card;
 
 	return 0;
 
+exit_snd_card:
+	snd_card_free(core.card);
 exit_class_container:
 	device_destroy(core.avirt_class, 0);
 exit_class:
 	class_destroy(core.avirt_class);
-exit_bus:
-exit_platform_device:
-	avirt_unregister_all();
+
 	return err;
 }
 
@@ -467,34 +459,11 @@ exit_platform_device:
  */
 static void __exit core_exit(void)
 {
+	__avirt_configfs_exit(&core);
+
 	kset_unregister(avirt_audiopath_kset);
 	device_destroy(core.avirt_class, 0);
 	class_destroy(core.avirt_class);
-
-	avirt_unregister_all();
-	D_INFOK("Exit begin!");
-	pr_info("playback_num: %d, capture_num: %d\n", playback_num,
-		capture_num);
-
-	pr_info("playback_chans: %d %d %d %d %d %d %d %d\n", playback_chans[0],
-		playback_chans[1], playback_chans[2], playback_chans[3],
-		playback_chans[4], playback_chans[5], playback_chans[6],
-		playback_chans[7]);
-
-	pr_info("capture_chans: %d %d %d %d %d %d %d %d\n", capture_chans[0],
-		capture_chans[1], capture_chans[2], capture_chans[3],
-		capture_chans[4], capture_chans[5], capture_chans[6],
-		capture_chans[7]);
-
-	pr_info("playback_names: %s %s %s %s %s %s %s %s\n", playback_names[0],
-		playback_names[1], playback_names[2], playback_names[3],
-		playback_names[4], playback_names[5], playback_names[6],
-		playback_names[7]);
-
-	pr_info("capture_names: %s %s %s %s %s %s %s %s\n", capture_names[0],
-		capture_names[1], capture_names[2], capture_names[3],
-		capture_names[4], capture_names[5], capture_names[6],
-		capture_names[7]);
 }
 
 module_init(core_init);

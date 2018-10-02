@@ -2,81 +2,37 @@
 /*
  * ALSA Virtual Soundcard
  *
- * alsa-pcm.c - ALSA PCM implementation
+ * alsa-pcm.c - AVIRT ALSA PCM interface
  *
  * Copyright (C) 2010-2018 Fiberdyne Systems Pty Ltd
  */
 
-#include "core.h"
-#include "alsa.h"
+#include "core_internal.h"
 
 #define AP_LOGNAME "CORE"
 
-#define DO_AUDIOPATH_CB(callback, substream, ...)                    \
-	do {                                                         \
-		struct avirt_audiopath *ap;                          \
-		ap = avirt_get_current_audiopath();                  \
-		CHK_NULL_V(ap, "Cannot find Audio Path!");           \
-		if (ap->pcm_ops->callback) {                         \
-			return ap->pcm_ops->callback(substream,      \
-						     ##__VA_ARGS__); \
-		}                                                    \
+#define DO_AUDIOPATH_CB(ap, callback, substream, ...)                          \
+	do {                                                                   \
+		if ((ap)->pcm_ops->callback) {                                 \
+			return (ap)->pcm_ops->callback((substream),            \
+						       ##__VA_ARGS__);         \
+		}                                                              \
 	} while (0)
 
 /**
- * configure_pcm - set up substream properties from user configuration
- * @substream: pointer to ALSA PCM substream
- * @return 0 on success or error code otherwise
+ * avirt_pcm_period_elapsed - PCM buffer complete callback
+ * @substreamid: pointer to ALSA PCM substream
+ *
+ * This should be called from a child Audio Path once it has finished processing
+ * the pcm buffer
  */
-static int configure_pcm(struct snd_pcm_substream *substream)
+void avirt_pcm_period_elapsed(struct snd_pcm_substream *substream)
 {
-	struct avirt_alsa_dev_config *config;
-	struct avirt_audiopath *audiopath;
-	struct avirt_alsa_dev_group *group;
-	struct snd_pcm_hardware *hw;
-	unsigned bytes_per_sample = 0, blocksize = 0;
-
-	audiopath = avirt_get_current_audiopath();
-	CHK_NULL_V(audiopath, "Cannot find Audio Path!");
-
-	blocksize = audiopath->blocksize;
-
-	// Copy the hw params from the audiopath to the pcm
-	hw = &substream->runtime->hw;
-	memcpy(hw, audiopath->hw, sizeof(struct snd_pcm_hardware));
-	pr_info("%s %d %d", __func__, blocksize, hw->periods_max);
-
-	if (hw->formats == SNDRV_PCM_FMTBIT_S16_LE)
-		bytes_per_sample = 2;
-	else {
-		pr_err("[%s] PCM only supports SNDRV_PCM_FMTBIT_S16_LE",
-		       __func__);
-		return -EINVAL;
-	}
-
-	// Get device group (playback/capture)
-	group = avirt_alsa_get_dev_group(substream->stream);
-	CHK_NULL(group);
-
-	// Check if substream id is valid
-	pr_info("%d substream is < %d", substream->pcm->device, group->devices);
-	if (substream->pcm->device >= group->devices) {
-		pr_err("%s %d substream id is invalid expecting %d", __func__,
-		       substream->pcm->device, group->devices);
-		return -1;
-	}
-
-	// Setup remaining hw properties
-	config = &group->config[substream->pcm->device];
-	hw->channels_min = config->channels;
-	hw->channels_max = config->channels;
-	hw->buffer_bytes_max = blocksize * hw->periods_max * bytes_per_sample *
-			       config->channels;
-	hw->period_bytes_min = blocksize * bytes_per_sample * config->channels;
-	hw->period_bytes_max = blocksize * bytes_per_sample * config->channels;
-
-	return 0;
+	// Notify ALSA middle layer of the elapsed period boundary
+	snd_pcm_period_elapsed(substream);
 }
+EXPORT_SYMBOL_GPL(avirt_pcm_period_elapsed);
+
 
 /*******************************************************************************
  * ALSA PCM Callbacks
@@ -92,12 +48,47 @@ static int configure_pcm(struct snd_pcm_substream *substream)
  */
 static int pcm_open(struct snd_pcm_substream *substream)
 {
-	DINFO(AP_LOGNAME, "");
-	// Setup the pcm device based on the configuration assigned
-	CHK_ERR_V(configure_pcm(substream), "Failed to setup pcm device");
+	struct avirt_audiopath *audiopath;
+	struct avirt_stream *stream;
+	struct snd_pcm_hardware *hw;
+	unsigned int bytes_per_sample = 0, blocksize = 0, chans = 0;
+
+	char *uid = "ap_fddsp"; // TD MF: Make this dynamic!
+	audiopath = avirt_audiopath_get(uid);
+	CHK_NULL_V(audiopath, -EFAULT, "Cannot find Audio Path uid: '%s'!",
+		   uid);
+	substream->private_data = audiopath;
+
+	blocksize = audiopath->blocksize;
+
+	// Copy the hw params from the audiopath to the pcm
+	hw = &substream->runtime->hw;
+	memcpy(hw, audiopath->hw, sizeof(struct snd_pcm_hardware));
+	pr_info("%s %d %d", __func__, blocksize, hw->periods_max);
+
+	if (hw->formats == SNDRV_PCM_FMTBIT_S16_LE) {
+		bytes_per_sample = 2;
+	} else {
+		pr_err("[%s] PCM only supports SNDRV_PCM_FMTBIT_S16_LE",
+		       __func__);
+		return -EINVAL;
+	}
+
+	stream = __avirt_stream_find_by_device(substream->pcm->device);
+	if (IS_ERR_VALUE(stream) || !stream)
+		return PTR_ERR(stream);
+
+	// Setup remaining hw properties
+	chans = stream->channels;
+	hw->channels_min = chans;
+	hw->channels_max = chans;
+	hw->buffer_bytes_max =
+		blocksize * hw->periods_max * bytes_per_sample * chans;
+	hw->period_bytes_min = blocksize * bytes_per_sample * chans;
+	hw->period_bytes_max = blocksize * bytes_per_sample * chans;
 
 	// Do additional Audio Path 'open' callback
-	DO_AUDIOPATH_CB(open, substream);
+	DO_AUDIOPATH_CB(audiopath, open, substream);
 
 	return 0;
 }
@@ -114,7 +105,8 @@ static int pcm_close(struct snd_pcm_substream *substream)
 {
 	DINFO(AP_LOGNAME, "");
 	// Do additional Audio Path 'close' callback
-	DO_AUDIOPATH_CB(close, substream);
+	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
+			close, substream);
 
 	return 0;
 }
@@ -132,27 +124,24 @@ static int pcm_close(struct snd_pcm_substream *substream)
 static int pcm_hw_params(struct snd_pcm_substream *substream,
 			 struct snd_pcm_hw_params *hw_params)
 {
-	int channels, err;
+	int err;
 	size_t bufsz;
 	struct avirt_audiopath *audiopath;
-	struct avirt_alsa_dev_group *group;
+	struct avirt_stream *stream;
 
 	DINFO(AP_LOGNAME, "");
 
-	group = avirt_alsa_get_dev_group(substream->stream);
-	CHK_NULL(group);
+	stream = __avirt_stream_find_by_device(substream->pcm->device);
+	if (IS_ERR_VALUE(stream) || !stream)
+		return PTR_ERR(stream);
 
-	channels = group->config[substream->pcm->device].channels;
-
-	if ((params_channels(hw_params) > channels) ||
-	    (params_channels(hw_params) < channels)) {
+	if ((params_channels(hw_params) > stream->channels)
+	    || (params_channels(hw_params) < stream->channels)) {
 		pr_err("Requested number of channels not supported.\n");
 		return -EINVAL;
 	}
 
-	audiopath = avirt_get_current_audiopath();
-	CHK_NULL_V(audiopath, "Cannot find Audio Path!");
-
+	audiopath = ((struct avirt_audiopath *)substream->private_data);
 	bufsz = params_buffer_bytes(hw_params) * audiopath->hw->periods_max;
 
 	err = snd_pcm_lib_alloc_vmalloc_buffer(substream, bufsz);
@@ -162,7 +151,7 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	// Do additional Audio Path 'hw_params' callback
-	DO_AUDIOPATH_CB(hw_params, substream, hw_params);
+	DO_AUDIOPATH_CB(audiopath, hw_params, substream, hw_params);
 
 	return 0;
 }
@@ -182,7 +171,8 @@ static int pcm_hw_free(struct snd_pcm_substream *substream)
 	CHK_ERR(snd_pcm_lib_free_vmalloc_buffer(substream));
 
 	// Do additional Audio Path 'hw_free' callback
-	DO_AUDIOPATH_CB(hw_free, substream);
+	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
+			hw_free, substream);
 
 	return 0;
 }
@@ -190,30 +180,18 @@ static int pcm_hw_free(struct snd_pcm_substream *substream)
 /**
  * pcm_prepare - Implements 'prepare' callback for PCM middle layer
  * @substream: pointer to ALSA PCM substream
- * 
+ *
  * The format rate, sample rate, etc., can be set here. This callback can be
  * called many times at each setup. This function is also used to handle overrun
  * and underrun conditions when we try and resync the DMA (if we're using DMA).
- * 
+ *
  * Returns 0 on success or error code otherwise.
  */
 static int pcm_prepare(struct snd_pcm_substream *substream)
 {
-	struct avirt_alsa_dev_group *group;
-	struct snd_pcm_runtime *runtime = substream->runtime;
-
-	DINFO(AP_LOGNAME, "");
-
-	group = avirt_alsa_get_dev_group(substream->stream);
-	CHK_NULL(group);
-
-	// Reset HW buffer index for the device
-	group->streams[substream->pcm->device].hw_frame_idx = 0;
-
-	group->buffersize = frames_to_bytes(runtime, runtime->buffer_size);
-
 	// Do additional Audio Path 'prepare' callback
-	DO_AUDIOPATH_CB(prepare, substream);
+	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
+			prepare, substream);
 
 	return 0;
 }
@@ -222,26 +200,19 @@ static int pcm_prepare(struct snd_pcm_substream *substream)
  * pcm_trigger - Implements 'trigger' callback for PCM middle layer
  * @substream: pointer to ALSA PCM substream
  * @cmd: action to be performed (start or stop)
- * 
+ *
  * This is called when the PCM is started, stopped or paused. The action
  * indicated action is specified in the second argument, SNDRV_PCM_TRIGGER_XXX
- * 
+ *
  * Returns 0 on success or error code otherwise.
  */
 static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	struct avirt_alsa_dev_group *group;
-
 	DINFO(AP_LOGNAME, "");
-
-	group = avirt_alsa_get_dev_group(substream->stream);
-	CHK_NULL(group);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
-		group->streams[substream->pcm->device].substream = substream;
-		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 		break;
@@ -251,7 +222,8 @@ static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	}
 
 	// Do additional Audio Path 'trigger' callback
-	DO_AUDIOPATH_CB(trigger, substream, cmd);
+	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
+			trigger, substream, cmd);
 
 	return 0;
 }
@@ -259,23 +231,22 @@ static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 /**
  * pcm_pointer - Implements 'pointer' callback for PCM middle layer
  * @substream: pointer to ALSA PCM substream
- * 
+ *
  * This gets called when the user space needs a DMA buffer index. IO errors will
  * be generated if the index does not increment, or drives beyond the frame
  * threshold of the buffer itself.
- * 
+ *
  * Returns the current hardware buffer frame index.
  */
 static snd_pcm_uframes_t pcm_pointer(struct snd_pcm_substream *substream)
 {
-	struct avirt_alsa_dev_group *group;
+	// Do additional Audio Path 'pointer' callback
+	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
+			pointer, substream);
 
 	DINFO(AP_LOGNAME, "");
 
-	group = avirt_alsa_get_dev_group(substream->stream);
-	CHK_NULL(group);
-
-	return group->streams[substream->pcm->device].hw_frame_idx;
+	return 0;
 }
 
 /**
@@ -285,25 +256,21 @@ static snd_pcm_uframes_t pcm_pointer(struct snd_pcm_substream *substream)
  * @audio_ts
  * @audio_tstamp_config
  * @audio_tstamp_report
- * 
+ *
  * Generic way to get system timestamp and audio timestamp info
- * 
+ *
  * Returns 0 on success or error code otherwise
  */
-static int pcm_get_time_info(
-	struct snd_pcm_substream *substream, struct timespec *system_ts,
-	struct timespec *audio_ts,
-	struct snd_pcm_audio_tstamp_config *audio_tstamp_config,
-	struct snd_pcm_audio_tstamp_report *audio_tstamp_report)
+static int
+pcm_get_time_info(struct snd_pcm_substream *substream,
+		  struct timespec *system_ts, struct timespec *audio_ts,
+		  struct snd_pcm_audio_tstamp_config *audio_tstamp_config,
+		  struct snd_pcm_audio_tstamp_report *audio_tstamp_report)
 {
-	struct avirt_alsa_dev_group *group;
-
 	DINFO(AP_LOGNAME, "");
 
-	group = avirt_alsa_get_dev_group(substream->stream);
-	CHK_NULL(group);
-
-	DO_AUDIOPATH_CB(get_time_info, substream, system_ts, audio_ts,
+	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
+			get_time_info, substream, system_ts, audio_ts,
 			audio_tstamp_config, audio_tstamp_report);
 
 	return 0;
@@ -316,9 +283,9 @@ static int pcm_get_time_info(
  * @pos: The offset in the DMA
  * @src: Audio PCM data from the user space
  * @count:
- * 
+ *
  * This is where we need to copy user audio PCM data into the sound driver
- * 
+ *
  * Returns 0 on success or error code otherwise.
  *
  */
@@ -326,15 +293,16 @@ static int pcm_copy_user(struct snd_pcm_substream *substream, int channel,
 			 snd_pcm_uframes_t pos, void __user *src,
 			 snd_pcm_uframes_t count)
 {
-	//struct snd_pcm_runtime *runtime;
-	//int offset;
+	// struct snd_pcm_runtime *runtime;
+	// int offset;
 
-	//runtime = substream->runtime;
-	//offset = frames_to_bytes(runtime, pos);
+	// runtime = substream->runtime;
+	// offset = frames_to_bytes(runtime, pos);
 
 	// Do additional Audio Path 'copy_user' callback
 	DINFO(AP_LOGNAME, "");
-	DO_AUDIOPATH_CB(copy_user, substream, channel, pos, src, count);
+	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
+			copy_user, substream, channel, pos, src, count);
 
 	return 0;
 }
@@ -346,9 +314,9 @@ static int pcm_copy_user(struct snd_pcm_substream *substream, int channel,
  * @pos: The offset in the DMA
  * @src: Audio PCM data from the user space
  * @count:
- * 
+ *
  * This is where we need to copy kernel audio PCM data into the sound driver
- * 
+ *
  * Returns 0 on success or error code otherwise.
  *
  */
@@ -356,23 +324,27 @@ static int pcm_copy_kernel(struct snd_pcm_substream *substream, int channel,
 			   unsigned long pos, void *buf, unsigned long count)
 {
 	DINFO(AP_LOGNAME, "");
-	DO_AUDIOPATH_CB(copy_kernel, substream, channel, pos, buf, count);
+	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
+			copy_kernel, substream, channel, pos, buf, count);
+
 	return 0;
 }
 
 /**
  * pcm_ack - Implements 'ack' callback for PCM middle layer
  * @substream: pointer to ALSA PCM substream
- * 
+ *
  * This is where we need to ack
- * 
+ *
  * Returns 0 on success or error code otherwise.
  *
  */
-int pcm_ack(struct snd_pcm_substream *substream)
+static int pcm_ack(struct snd_pcm_substream *substream)
 {
 	DINFO(AP_LOGNAME, "");
-	DO_AUDIOPATH_CB(ack, substream);
+	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
+			ack, substream);
+
 	return 0;
 }
 
@@ -380,7 +352,9 @@ static int pcm_silence(struct snd_pcm_substream *substream, int channel,
 		       snd_pcm_uframes_t pos, snd_pcm_uframes_t count)
 {
 	DINFO(AP_LOGNAME, "");
-	DO_AUDIOPATH_CB(fill_silence, substream, channel, pos, count);
+	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
+			fill_silence, substream, channel, pos, count);
+
 	return 0;
 }
 
@@ -399,5 +373,4 @@ struct snd_pcm_ops pcm_ops = {
 	.copy_kernel = pcm_copy_kernel,
 	.page = snd_pcm_lib_get_vmalloc_page,
 	.ack = pcm_ack,
-
 };

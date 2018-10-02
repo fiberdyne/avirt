@@ -11,6 +11,10 @@
 #define __AVIRT_CORE_H__
 
 #include <sound/pcm.h>
+#include <linux/configfs.h>
+
+#define MAX_STREAMS 16
+#define MAX_NAME_LEN 80
 
 #define DINFO(ap, fmt, args...)                                           \
 	printk(KERN_INFO "[%s]: %d:%s " fmt "\n", ap, __LINE__, __func__, \
@@ -24,52 +28,95 @@
 	       ##args)
 
 /**
- * PCM buffer complete callback
- * 
- * These are called from the audiopath when a PCM buffer has completed, and 
- * new data can be submitted/retrieved
+ * AVIRT Audio Path configure function type
+ * Each Audio Path registers this at avirt_audiopath_register time.
+ * It is then called by the core once AVIRT has been configured
  */
-typedef int (*avirt_buff_complete)(struct snd_pcm_substream *substream);
+typedef int (*avirt_audiopath_configure)(struct config_group *stream_group,
+					 unsigned int stream_count);
 
+/**
+ * AVIRT Audio Path info
+ */
 struct avirt_audiopath {
-	const char *name;
-	unsigned version[3];
-	int value;
-	struct snd_pcm_hardware *hw;
-	struct snd_pcm_ops *pcm_ops;
-	unsigned blocksize;
+	const char *uid;		     /* Unique identifier */
+	const char *name;		     /* Pretty name */
+	unsigned int version[3];	     /* Version - Major.Minor.Ext */
+	struct snd_pcm_hardware *hw;	 /* ALSA PCM HW conf */
+	struct snd_pcm_ops *pcm_ops;	 /* ALSA PCM op table */
+	unsigned int blocksize;		     /* Audio frame size accepted */
+	avirt_audiopath_configure configure; /* Configure callback function */
 
 	void *context;
 };
 
-struct avirt_coreinfo {
-	unsigned version[3];
-	unsigned playback_num;
-	unsigned capture_num;
-
-	avirt_buff_complete pcm_buff_complete;
+/*
+ * Audio stream configuration
+ */
+struct avirt_stream {
+	char name[MAX_NAME_LEN]; /* Stream name */
+	char map[MAX_NAME_LEN];  /* Stream Audio Path mapping */
+	unsigned int channels;   /* Stream channel count */
+	unsigned int device;     /* Stream PCM device no. */
+	unsigned int direction;  /* Stream direction */
+	struct config_item item; /* configfs item reference */
 };
 
 /**
- * avirt_register_audiopath - register Audio Path with ALSA virtual driver
+ * AVIRT core info
+ */
+struct avirt_coreinfo {
+	unsigned int version[3];
+};
+
+/**
+ * avirt_audiopath_register - register Audio Path with ALSA virtual driver
  * @audiopath: Audio Path to be registered
  * @core: ALSA virtual driver core info
  * @return: 0 on success or error code otherwise
  */
-int avirt_register_audiopath(struct avirt_audiopath *audiopath,
+int avirt_audiopath_register(struct avirt_audiopath *audiopath,
 			     struct avirt_coreinfo **coreinfo);
 
 /**
- * avirt_deregister_audiopath - deregister Audio Path with ALSA virtual driver
+ * avirt_audiopath_deregister - deregister Audio Path with ALSA virtual driver
  * @audiopath: Audio Path to be deregistered
  * @return: 0 on success or error code otherwise
  */
-int avirt_deregister_audiopath(struct avirt_audiopath *audiopath);
+int avirt_audiopath_deregister(struct avirt_audiopath *audiopath);
 
 /**
- * avirt_get_current_audiopath - retrieves the current Audio Path
- * @return: Current Audio Path
+ * avirt_audiopath_get - retrieves the Audio Path by it's UID
+ * @uid: Unique ID for the Audio Path
+ * @return: Corresponding Audio Path
  */
-struct avirt_audiopath *avirt_get_current_audiopath(void);
+struct avirt_audiopath *avirt_audiopath_get(const char *uid);
+
+/**
+ * avirt_stream_count - get the stream count for the given direction
+ * @direction: The direction to get the stream count for
+ * @return: The stream count
+ */
+int avirt_stream_count(unsigned int direction);
+
+/**
+ * avirt_stream_from_config_item - Convert a config_item to an avirt_stream
+ * @item: The config_item to convert from
+ * @return: The item's avirt_stream if successful, NULL otherwise
+ */
+static inline struct avirt_stream *
+avirt_stream_from_config_item(struct config_item *item)
+{
+	return item ? container_of(item, struct avirt_stream, item) : NULL;
+}
+
+/**
+ * avirt_pcm_period_elapsed - PCM buffer complete callback
+ * @substream: pointer to ALSA PCM substream
+ *
+ * This should be called from a child Audio Path once it has finished processing
+ * the PCM buffer
+ */
+void avirt_pcm_period_elapsed(struct snd_pcm_substream *substream);
 
 #endif // __AVIRT_CORE_H__
