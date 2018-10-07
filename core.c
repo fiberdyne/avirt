@@ -32,6 +32,7 @@ extern struct snd_pcm_ops pcm_ops;
 
 static struct avirt_core core = {
 	.stream_count = 0,
+	.streams_sealed = false,
 };
 
 struct avirt_coreinfo coreinfo = {
@@ -244,6 +245,11 @@ int avirt_audiopath_register(struct avirt_audiopath *audiopath,
 		audiopath->hw->periods_max);
 	list_add_tail(&audiopath_obj->list, &audiopath_list);
 
+	// If we have already sealed the streams, configure this AP
+	if (core.streams_sealed)
+		audiopath->configure(core.card, core.stream_group,
+				     core.stream_count);
+
 	*info = &coreinfo;
 
 	return 0;
@@ -357,8 +363,13 @@ struct avirt_stream *__avirt_stream_create(const char *name, int direction)
 int __avirt_card_register(void)
 {
 	int err = 0;
-
 	struct avirt_audiopath_obj *ap_obj;
+
+	if (core.streams_sealed) {
+		pr_err("Streams already sealed!\n");
+		return -1;
+	}
+
 	list_for_each_entry (ap_obj, &audiopath_list, list) {
 		pr_info("Calling configure for AP uid: %s\n",
 			ap_obj->path->uid);
@@ -371,7 +382,14 @@ int __avirt_card_register(void)
 		snd_card_free(core.card);
 	}
 
+	core.streams_sealed = true;
+
 	return err;
+}
+
+bool __avirt_streams_sealed(void)
+{
+	return core.streams_sealed;
 }
 
 struct avirt_stream *__avirt_stream_find_by_device(unsigned int device)

@@ -10,8 +10,6 @@
 #include <sound/core.h>
 #include "core_internal.h"
 
-static bool streams_sealed = false;
-
 static ssize_t cfg_avirt_stream_direction_show(struct config_item *item,
 					       char *page)
 {
@@ -137,7 +135,7 @@ cfg_avirt_stream_make_item(struct config_group *group, const char *name)
 static ssize_t cfg_avirt_stream_group_sealed_show(struct config_item *item,
 						  char *page)
 {
-	return snprintf(page, PAGE_SIZE, "%d\n", streams_sealed);
+	return snprintf(page, PAGE_SIZE, "%d\n", __avirt_streams_sealed());
 }
 
 static ssize_t cfg_avirt_stream_group_sealed_store(struct config_item *item,
@@ -147,7 +145,7 @@ static ssize_t cfg_avirt_stream_group_sealed_store(struct config_item *item,
 	unsigned long tmp;
 	char *p = (char *)page;
 
-	if (streams_sealed) {
+	if (__avirt_streams_sealed()) {
 		pr_err("AVIRT streams are already sealed!\n");
 		return -EPERM;
 	}
@@ -158,8 +156,6 @@ static ssize_t cfg_avirt_stream_group_sealed_store(struct config_item *item,
 		pr_err("AVIRT streams can only be sealed, not unsealed!\n");
 		return -ERANGE;
 	}
-
-	streams_sealed = (bool)tmp;
 
 	CHK_ERR(__avirt_card_register());
 

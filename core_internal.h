@@ -20,6 +20,7 @@ struct avirt_core {
 	struct class *avirt_class;
 	struct config_group *stream_group;
 	unsigned int stream_count;
+	bool streams_sealed;
 };
 
 int __init __avirt_configfs_init(struct avirt_core *core);
@@ -31,6 +32,13 @@ void __exit __avirt_configfs_exit(struct avirt_core *core);
  */
 int __avirt_card_register(void);
 
+/**
+ * __avirt_streams_sealed - Check whether the streams have been sealed or not
+ * @return: true if sealed, false otherwise
+ */
+bool __avirt_streams_sealed(void);
+
+/**
 /**
  * __avirt_stream_find_by_device - Get audio stream from device number
  * @device: The PCM device number corresponding to the desired stream
