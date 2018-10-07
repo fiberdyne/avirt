@@ -427,9 +427,10 @@ static int __init core_init(void)
 		goto exit_class_container;
 	}
 
-	strcpy(core.card->driver, "avirt-alsa-device");
-	strcpy(core.card->shortname, "avirt");
-	strcpy(core.card->longname, "A virtual sound card driver for ALSA");
+	strncpy(core.card->driver, "avirt-alsa-dev", 16);
+	strncpy(core.card->shortname, "avirt", 32);
+	strncpy(core.card->longname, "A virtual sound card driver for ALSA",
+		80);
 
 	avirt_audiopath_kset =
 		kset_create_and_add("audiopaths", NULL, &core.dev->kobj);

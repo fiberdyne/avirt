@@ -173,12 +173,14 @@ static struct configfs_attribute *cfg_avirt_stream_group_attrs[] = {
 };
 
 static struct configfs_group_operations cfg_avirt_stream_group_ops = {
-	.make_item = cfg_avirt_stream_make_item};
+	.make_item = cfg_avirt_stream_make_item
+};
 
 static struct config_item_type cfg_stream_group_type = {
 	.ct_group_ops = &cfg_avirt_stream_group_ops,
 	.ct_attrs = cfg_avirt_stream_group_attrs,
-	.ct_owner = THIS_MODULE};
+	.ct_owner = THIS_MODULE
+};
 
 static struct config_item_type cfg_avirt_group_type = {
 	.ct_owner = THIS_MODULE,
