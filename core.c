@@ -462,6 +462,7 @@ static void __exit core_exit(void)
 	__avirt_configfs_exit(&core);
 
 	kset_unregister(avirt_audiopath_kset);
+	snd_card_free(core.card);
 	device_destroy(core.avirt_class, 0);
 	class_destroy(core.avirt_class);
 }
