@@ -32,9 +32,11 @@ static ssize_t cfg_avirt_stream_map_show(struct config_item *item, char *page)
 static ssize_t cfg_avirt_stream_map_store(struct config_item *item,
 					  const char *page, size_t count)
 {
+	char *split;
 	struct avirt_stream *stream = avirt_stream_from_config_item(item);
 
-	memcpy(stream->map, (char *)page, count);
+	split = strsep((char **)&page, "\n");
+	memcpy(stream->map, (char *)split, count);
 
 	return count;
 }
