@@ -39,12 +39,11 @@ typedef int (*avirt_audiopath_configure)(struct config_group *stream_group,
  * AVIRT Audio Path info
  */
 struct avirt_audiopath {
-	const char *uid;		     /* Unique identifier */
-	const char *name;		     /* Pretty name */
-	unsigned int version[3];	     /* Version - Major.Minor.Ext */
-	struct snd_pcm_hardware *hw;	 /* ALSA PCM HW conf */
-	struct snd_pcm_ops *pcm_ops;	 /* ALSA PCM op table */
-	unsigned int blocksize;		     /* Audio frame size accepted */
+	const char *uid; /* Unique identifier */
+	const char *name; /* Pretty name */
+	unsigned int version[3]; /* Version - Major.Minor.Ext */
+	const struct snd_pcm_hardware *hw; /* ALSA PCM HW conf */
+	const struct snd_pcm_ops *pcm_ops; /* ALSA PCM op table */
 	avirt_audiopath_configure configure; /* Configure callback function */
 
 	void *context;
@@ -55,10 +54,10 @@ struct avirt_audiopath {
  */
 struct avirt_stream {
 	char name[MAX_NAME_LEN]; /* Stream name */
-	char map[MAX_NAME_LEN];  /* Stream Audio Path mapping */
-	unsigned int channels;   /* Stream channel count */
-	unsigned int device;     /* Stream PCM device no. */
-	unsigned int direction;  /* Stream direction */
+	char map[MAX_NAME_LEN]; /* Stream Audio Path mapping */
+	unsigned int channels; /* Stream channel count */
+	unsigned int device; /* Stream PCM device no. */
+	unsigned int direction; /* Stream direction */
 	struct config_item item; /* configfs item reference */
 };
 
@@ -105,7 +104,7 @@ int avirt_stream_count(unsigned int direction);
  * @return: The item's avirt_stream if successful, NULL otherwise
  */
 static inline struct avirt_stream *
-avirt_stream_from_config_item(struct config_item *item)
+	avirt_stream_from_config_item(struct config_item *item)
 {
 	return item ? container_of(item, struct avirt_stream, item) : NULL;
 }

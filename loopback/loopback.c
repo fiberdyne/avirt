@@ -297,7 +297,6 @@ static struct avirt_audiopath loopbackap_module = {
 	.version = { 0, 0, 1 },
 	.hw = &loopbackap_hw,
 	.pcm_ops = &loopbackap_pcm_ops,
-	.blocksize = 512,
 	.configure = loopback_configure,
 };
 

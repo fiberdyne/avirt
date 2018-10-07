@@ -23,7 +23,17 @@ struct avirt_core {
 	bool streams_sealed;
 };
 
+/**
+ * __avirt_configfs_init - Initialise the configfs system
+ * @core: The avirt_core pointer
+ * @return: 0 on success, negative ERRNO on failure
+ */
 int __init __avirt_configfs_init(struct avirt_core *core);
+
+/**
+ * __avirt_configfs_exit - Clean up and exit the configfs system
+ * @core: The avirt_core pointer
+ */
 void __exit __avirt_configfs_exit(struct avirt_core *core);
 
 /**

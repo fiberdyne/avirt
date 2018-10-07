@@ -268,7 +268,6 @@ static struct avirt_audiopath dummyap_module = {
 	.version = { 0, 0, 1 },
 	.hw = &dummyap_hw,
 	.pcm_ops = &dummyap_pcm_ops,
-	.blocksize = DUMMY_BLOCKSIZE,
 	.configure = dummy_configure,
 };
 

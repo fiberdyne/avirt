@@ -51,7 +51,7 @@ static int pcm_open(struct snd_pcm_substream *substream)
 	struct avirt_audiopath *audiopath;
 	struct avirt_stream *stream;
 	struct snd_pcm_hardware *hw;
-	unsigned int bytes_per_sample = 0, blocksize = 0, chans = 0;
+	unsigned int chans = 0;
 
 	char *uid = "ap_fddsp"; // TD MF: Make this dynamic!
 	audiopath = avirt_audiopath_get(uid);
@@ -59,20 +59,9 @@ static int pcm_open(struct snd_pcm_substream *substream)
 		   uid);
 	substream->private_data = audiopath;
 
-	blocksize = audiopath->blocksize;
-
 	// Copy the hw params from the audiopath to the pcm
 	hw = &substream->runtime->hw;
 	memcpy(hw, audiopath->hw, sizeof(struct snd_pcm_hardware));
-	pr_info("%s %d %d", __func__, blocksize, hw->periods_max);
-
-	if (hw->formats == SNDRV_PCM_FMTBIT_S16_LE) {
-		bytes_per_sample = 2;
-	} else {
-		pr_err("[%s] PCM only supports SNDRV_PCM_FMTBIT_S16_LE",
-		       __func__);
-		return -EINVAL;
-	}
 
 	stream = __avirt_stream_find_by_device(substream->pcm->device);
 	if (IS_ERR_VALUE(stream) || !stream)

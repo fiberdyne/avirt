@@ -241,8 +241,7 @@ int avirt_audiopath_register(struct avirt_audiopath *audiopath,
 
 	audiopath->context = audiopath_obj;
 	D_INFOK("Registered new Audio Path: %s", audiopath->name);
-	D_INFOK("\tBlocksize: %d, Periods: %d", audiopath->blocksize,
-		audiopath->hw->periods_max);
+
 	list_add_tail(&audiopath_obj->list, &audiopath_list);
 
 	// If we have already sealed the streams, configure this AP
@@ -325,9 +324,6 @@ struct avirt_stream *__avirt_stream_create(const char *name, int direction)
 	struct snd_pcm *pcm;
 	struct avirt_stream *stream;
 	int err;
-	D_INFOK("Starting new core\n\n\n\n");
-	D_INFOK("Alsa Virtual Sound Driver avirt-%d.%d.%d", coreinfo.version[0],
-		coreinfo.version[1], coreinfo.version[2]);
 
 	stream = kzalloc(sizeof(*stream), GFP_KERNEL);
 	if (!stream)
