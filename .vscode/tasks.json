@@ -1,73 +1,63 @@
 {
-	// See https://go.microsoft.com/fwlink/?LinkId=733558
-	// for the documentation about the tasks.json format
-	"version": "2.0.0",
-	"type": "shell",
-	"presentation": {
-		"reveal": "always"
-	},
-	"tasks": [
-		{
-			"label": "Make Driver",
-			"command": "CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y CONFIG_AVIRT_DUMMYAP=m CONFIG_AVIRT_LOOPBACKAP=m make -C /lib/modules/$(uname -r)/build/ M=$(pwd)",
-			"group": "build",
-			"problemMatcher": [
-				"$gcc"
-			]
-		},
-		{
-			"label": "Clean Driver",
-			"command": "CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y CONFIG_AVIRT_DUMMYAP=m CONFIG_AVIRT_LOOPBACKAP=m make -C /lib/modules/$(uname -r)/build/ M=$(pwd) clean",
-			"group": "build",
-			"problemMatcher": [
-				"$gcc"
-			]
-		},
-		{
-			"label": "Deploy Drivers",
-			"command": "sudo sh -c './unload.sh && ./loadDrivers.sh'",
-			"problemMatcher": []
-		},
-		{
-			"label": "Make and Deploy Drivers",
-			"command": "make && sudo sh -c './unload.sh && ./loadDrivers.sh'",
-			"problemMatcher": []
-		},
-		{
-			"label": "Unload new drivers",
-			"command": "sudo sh unload.sh",
-			"problemMatcher": []
-		},
-		{
-			"label": "Load new drivers",
-			"command": "sudo sh ./loadDrivers.sh",
-			"problemMatcher": []
-		},
-		{
-			"label": "Make Driver AGL",
-			"type": "shell",
-			"command": "./make-agl.sh bf869951",
-			"group": "build",
-			"problemMatcher": [
-				"$gcc"
-			]
-		},
-		{
-			"label": "Clean Driver AGL",
-			"type": "shell",
-			"command": "./make-agl.sh bf869951 clean",
-			"group": "build",
-			"problemMatcher": [
-				"$gcc"
-			]
-		},
-		{
-			"label": "Deploy Driver AGL",
-			"type": "shell",
-			"command": "rsync -av avirt_core.ko dummy/avirt_dummyap.ko root@192.168.1.198:~/",
-			"problemMatcher": [
-				"$gcc"
-			]
-		},
-	]
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "type": "shell",
+  "presentation": {
+    "reveal": "always"
+  },
+  "tasks": [
+    {
+      "label": "Make Driver",
+      "command": "make all",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Clean Driver",
+      "command": "make clean",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Deploy Drivers",
+      "command": "sudo sh -c './scripts/unload.sh && ./scripts/load.sh'",
+      "problemMatcher": []
+    },
+    {
+      "label": "Make and Deploy Drivers",
+      "command": "make all && sudo sh -c './scripts/unload.sh && ./scripts/load.sh'",
+      "problemMatcher": []
+    },
+    {
+      "label": "Unload new drivers",
+      "command": "sudo sh ./scripts/unload.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "Load new drivers",
+      "command": "sudo sh ./scripts/load.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "Make Driver AGL",
+      "type": "shell",
+      "command": "./scripts/make-agl.sh 6864c558",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Clean Driver AGL",
+      "type": "shell",
+      "command": "./scripts/make-agl.sh 6864c558 clean",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Deploy Driver AGL",
+      "type": "shell",
+      "command": "rsync -av avirt_core.ko dummy/avirt_dummyap.ko loopback/avirt_loopbackap.ko root@192.168.1.193:/lib/modules/4.14.0-yocto-standard/extra",
+      "problemMatcher": ["$gcc"]
+    }
+  ]
 }
