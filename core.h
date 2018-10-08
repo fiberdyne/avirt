@@ -16,24 +16,35 @@
 #define MAX_STREAMS 16
 #define MAX_NAME_LEN 80
 
+#define DINFO(logname, fmt, args...)                                           \
+	printk(KERN_INFO "[AVIRT][%s]: " fmt "\n", logname, ##args)
+
+#define DERROR(logname, fmt, args...)                                          \
+	printk(KERN_ERR "[AVIRT][%s]: %d:%s " fmt "\n", logname, __LINE__,     \
+	       __func__, ##args)
+
+#define DDEBUG(logname, fmt, args...)                                          \
+	printk(KERN_DEBUG "[AVIRT][%s]: %d:%s " fmt "\n", logname, __LINE__,   \
+	       __func__, ##args)
+
 /**
  * AVIRT Audio Path configure function type
  * Each Audio Path registers this at avirt_audiopath_register time.
  * It is then called by the core once AVIRT has been configured
  */
-typedef int (*avirt_audiopath_configure)(struct config_group *stream_group,
+typedef int (*avirt_audiopath_configure)(struct snd_card *card,
+					 struct config_group *stream_group,
 					 unsigned int stream_count);
 
 /**
  * AVIRT Audio Path info
  */
 struct avirt_audiopath {
-	const char *uid;		     /* Unique identifier */
-	const char *name;		     /* Pretty name */
-	unsigned int version[3];	     /* Version - Major.Minor.Ext */
-	struct snd_pcm_hardware *hw;	 /* ALSA PCM HW conf */
-	struct snd_pcm_ops *pcm_ops;	 /* ALSA PCM op table */
-	unsigned int blocksize;		     /* Audio frame size accepted */
+	const char *uid; /* Unique identifier */
+	const char *name; /* Pretty name */
+	unsigned int version[3]; /* Version - Major.Minor.Ext */
+	const struct snd_pcm_hardware *hw; /* ALSA PCM HW conf */
+	const struct snd_pcm_ops *pcm_ops; /* ALSA PCM op table */
 	avirt_audiopath_configure configure; /* Configure callback function */
 
 	void *context;
@@ -44,10 +55,11 @@ struct avirt_audiopath {
  */
 struct avirt_stream {
 	char name[MAX_NAME_LEN]; /* Stream name */
-	char map[MAX_NAME_LEN];  /* Stream Audio Path mapping */
-	unsigned int channels;   /* Stream channel count */
-	unsigned int device;     /* Stream PCM device no. */
-	unsigned int direction;  /* Stream direction */
+	char map[MAX_NAME_LEN]; /* Stream Audio Path mapping */
+	unsigned int channels; /* Stream channel count */
+	unsigned int device; /* Stream PCM device no. */
+	unsigned int direction; /* Stream direction */
+	struct snd_pcm *pcm; /* ALSA PCM  */
 	struct config_item item; /* configfs item reference */
 };
 

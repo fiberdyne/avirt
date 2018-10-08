@@ -9,13 +9,16 @@
 
 #include "core_internal.h"
 
+#define D_LOGNAME "pcm"
+
+#define D_INFOK(fmt, args...) DINFO(D_LOGNAME, fmt, ##args)
+#define D_PRINTK(fmt, args...) DDEBUG(D_LOGNAME, fmt, ##args)
+#define D_ERRORK(fmt, args...) DERROR(D_LOGNAME, fmt, ##args)
+
 #define DO_AUDIOPATH_CB(ap, callback, substream, ...)                          \
-	do {                                                                   \
-		if ((ap)->pcm_ops->callback) {                                 \
-			return (ap)->pcm_ops->callback((substream),            \
-						       ##__VA_ARGS__);         \
-		}                                                              \
-	} while (0)
+	(((ap)->pcm_ops->callback) ?                                           \
+		 (ap)->pcm_ops->callback((substream), ##__VA_ARGS__) :         \
+		 0)
 
 /**
  * avirt_pcm_period_elapsed - PCM buffer complete callback
@@ -30,7 +33,6 @@ void avirt_pcm_period_elapsed(struct snd_pcm_substream *substream)
 	snd_pcm_period_elapsed(substream);
 }
 EXPORT_SYMBOL_GPL(avirt_pcm_period_elapsed);
-
 
 /*******************************************************************************
  * ALSA PCM Callbacks
@@ -49,28 +51,17 @@ static int pcm_open(struct snd_pcm_substream *substream)
 	struct avirt_audiopath *audiopath;
 	struct avirt_stream *stream;
 	struct snd_pcm_hardware *hw;
-	unsigned int bytes_per_sample = 0, blocksize = 0, chans = 0;
+	unsigned int chans = 0;
 
-	char *uid = "ap_fddsp"; // TD MF: Make this dynamic!
-	audiopath = avirt_audiopath_get(uid);
+	stream = __avirt_stream_find_by_device(substream->pcm->device);
+	audiopath = avirt_audiopath_get(stream->map);
 	CHK_NULL_V(audiopath, -EFAULT, "Cannot find Audio Path uid: '%s'!",
-		   uid);
+		   stream->map);
 	substream->private_data = audiopath;
-
-	blocksize = audiopath->blocksize;
 
 	// Copy the hw params from the audiopath to the pcm
 	hw = &substream->runtime->hw;
 	memcpy(hw, audiopath->hw, sizeof(struct snd_pcm_hardware));
-	pr_info("%s %d %d", __func__, blocksize, hw->periods_max);
-
-	if (hw->formats == SNDRV_PCM_FMTBIT_S16_LE) {
-		bytes_per_sample = 2;
-	} else {
-		pr_err("[%s] PCM only supports SNDRV_PCM_FMTBIT_S16_LE",
-		       __func__);
-		return -EINVAL;
-	}
 
 	stream = __avirt_stream_find_by_device(substream->pcm->device);
 	if (IS_ERR_VALUE(stream) || !stream)
@@ -80,15 +71,9 @@ static int pcm_open(struct snd_pcm_substream *substream)
 	chans = stream->channels;
 	hw->channels_min = chans;
 	hw->channels_max = chans;
-	hw->buffer_bytes_max =
-		blocksize * hw->periods_max * bytes_per_sample * chans;
-	hw->period_bytes_min = blocksize * bytes_per_sample * chans;
-	hw->period_bytes_max = blocksize * bytes_per_sample * chans;
 
 	// Do additional Audio Path 'open' callback
-	DO_AUDIOPATH_CB(audiopath, open, substream);
-
-	return 0;
+	return DO_AUDIOPATH_CB(audiopath, open, substream);
 }
 
 /**
@@ -102,10 +87,9 @@ static int pcm_open(struct snd_pcm_substream *substream)
 static int pcm_close(struct snd_pcm_substream *substream)
 {
 	// Do additional Audio Path 'close' callback
-	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
-			close, substream);
-
-	return 0;
+	return DO_AUDIOPATH_CB(
+		((struct avirt_audiopath *)substream->private_data), close,
+		substream);
 }
 
 /**
@@ -121,7 +105,7 @@ static int pcm_close(struct snd_pcm_substream *substream)
 static int pcm_hw_params(struct snd_pcm_substream *substream,
 			 struct snd_pcm_hw_params *hw_params)
 {
-	int err;
+	int retval;
 	size_t bufsz;
 	struct avirt_audiopath *audiopath;
 	struct avirt_stream *stream;
@@ -130,25 +114,21 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
 	if (IS_ERR_VALUE(stream) || !stream)
 		return PTR_ERR(stream);
 
-	if ((params_channels(hw_params) > stream->channels)
-	    || (params_channels(hw_params) < stream->channels)) {
-		pr_err("Requested number of channels not supported.\n");
+	if ((params_channels(hw_params) > stream->channels) ||
+	    (params_channels(hw_params) < stream->channels)) {
+		D_ERRORK("Requested number of channels: %d not supported",
+			 params_channels(hw_params));
 		return -EINVAL;
 	}
 
 	audiopath = ((struct avirt_audiopath *)substream->private_data);
 	bufsz = params_buffer_bytes(hw_params) * audiopath->hw->periods_max;
 
-	err = snd_pcm_lib_alloc_vmalloc_buffer(substream, bufsz);
-	if (err <= 0) {
-		pr_err("pcm: buffer allocation failed (%d)\n", err);
-		return err;
-	}
+	retval = snd_pcm_lib_alloc_vmalloc_buffer(substream, bufsz);
+	if (retval < 0)
+		D_ERRORK("pcm: buffer allocation failed: %d", retval);
 
-	// Do additional Audio Path 'hw_params' callback
-	// DO_AUDIOPATH_CB(hw_params, substream, hw_params);
-
-	return 0;
+	return retval;
 }
 
 /**
@@ -162,12 +142,14 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
  */
 static int pcm_hw_free(struct snd_pcm_substream *substream)
 {
-	CHK_ERR(snd_pcm_lib_free_vmalloc_buffer(substream));
+	int err;
 
 	// Do additional Audio Path 'hw_free' callback
-	// DO_AUDIOPATH_CB(hw_free, substream);
+	err = DO_AUDIOPATH_CB(
+		((struct avirt_audiopath *)substream->private_data), hw_free,
+		substream);
 
-	return 0;
+	return snd_pcm_lib_free_vmalloc_buffer(substream);
 }
 
 /**
@@ -183,10 +165,9 @@ static int pcm_hw_free(struct snd_pcm_substream *substream)
 static int pcm_prepare(struct snd_pcm_substream *substream)
 {
 	// Do additional Audio Path 'prepare' callback
-	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
-			prepare, substream);
-
-	return 0;
+	return DO_AUDIOPATH_CB(
+		((struct avirt_audiopath *)substream->private_data), prepare,
+		substream);
 }
 
 /**
@@ -208,15 +189,14 @@ static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 		break;
 	default:
-		pr_err("trigger must be START or STOP");
+		D_ERRORK("Invalid trigger cmd: %d", cmd);
 		return -EINVAL;
 	}
 
 	// Do additional Audio Path 'trigger' callback
-	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
-			trigger, substream, cmd);
-
-	return 0;
+	return DO_AUDIOPATH_CB(
+		((struct avirt_audiopath *)substream->private_data), trigger,
+		substream, cmd);
 }
 
 /**
@@ -232,10 +212,9 @@ static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 static snd_pcm_uframes_t pcm_pointer(struct snd_pcm_substream *substream)
 {
 	// Do additional Audio Path 'pointer' callback
-	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
-			pointer, substream);
-
-	return 0;
+	return DO_AUDIOPATH_CB(
+		((struct avirt_audiopath *)substream->private_data), pointer,
+		substream);
 }
 
 /**
@@ -250,17 +229,16 @@ static snd_pcm_uframes_t pcm_pointer(struct snd_pcm_substream *substream)
  *
  * Returns 0 on success or error code otherwise
  */
-static int pcm_get_time_info(
-	struct snd_pcm_substream *substream, struct timespec *system_ts,
-	struct timespec *audio_ts,
-	struct snd_pcm_audio_tstamp_config *audio_tstamp_config,
-	struct snd_pcm_audio_tstamp_report *audio_tstamp_report)
+static int
+pcm_get_time_info(struct snd_pcm_substream *substream,
+		  struct timespec *system_ts, struct timespec *audio_ts,
+		  struct snd_pcm_audio_tstamp_config *audio_tstamp_config,
+		  struct snd_pcm_audio_tstamp_report *audio_tstamp_report)
 {
-	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
-			get_time_info, substream, system_ts, audio_ts,
-			audio_tstamp_config, audio_tstamp_report);
-
-	return 0;
+	return DO_AUDIOPATH_CB(
+		((struct avirt_audiopath *)substream->private_data),
+		get_time_info, substream, system_ts, audio_ts,
+		audio_tstamp_config, audio_tstamp_report);
 }
 
 /**
@@ -287,10 +265,9 @@ static int pcm_copy_user(struct snd_pcm_substream *substream, int channel,
 	// offset = frames_to_bytes(runtime, pos);
 
 	// Do additional Audio Path 'copy_user' callback
-	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
-			copy_user, substream, channel, pos, src, count);
-
-	return 0;
+	return DO_AUDIOPATH_CB(
+		((struct avirt_audiopath *)substream->private_data), copy_user,
+		substream, channel, pos, src, count);
 }
 
 /**
@@ -309,10 +286,9 @@ static int pcm_copy_user(struct snd_pcm_substream *substream, int channel,
 static int pcm_copy_kernel(struct snd_pcm_substream *substream, int channel,
 			   unsigned long pos, void *buf, unsigned long count)
 {
-	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
-			copy_kernel, substream, channel, pos, buf, count);
-
-	return 0;
+	return DO_AUDIOPATH_CB(
+		((struct avirt_audiopath *)substream->private_data),
+		copy_kernel, substream, channel, pos, buf, count);
 }
 
 /**
@@ -326,19 +302,17 @@ static int pcm_copy_kernel(struct snd_pcm_substream *substream, int channel,
  */
 static int pcm_ack(struct snd_pcm_substream *substream)
 {
-	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
-			ack, substream);
-
-	return 0;
+	return DO_AUDIOPATH_CB(
+		((struct avirt_audiopath *)substream->private_data), ack,
+		substream);
 }
 
 static int pcm_silence(struct snd_pcm_substream *substream, int channel,
 		       snd_pcm_uframes_t pos, snd_pcm_uframes_t count)
 {
-	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
-			fill_silence, substream, channel, pos, count);
-
-	return 0;
+	return DO_AUDIOPATH_CB(
+		((struct avirt_audiopath *)substream->private_data),
+		fill_silence, substream, channel, pos, count);
 }
 
 struct snd_pcm_ops pcm_ops = {
@@ -350,10 +324,10 @@ struct snd_pcm_ops pcm_ops = {
 	.prepare = pcm_prepare,
 	.trigger = pcm_trigger,
 	.pointer = pcm_pointer,
-	.get_time_info = pcm_get_time_info,
-	.fill_silence = pcm_silence,
+	//.get_time_info = pcm_get_time_info,
+	//.fill_silence = pcm_silence,
 	.copy_user = pcm_copy_user,
-	.copy_kernel = pcm_copy_kernel,
+	//.copy_kernel = pcm_copy_kernel,
 	.page = snd_pcm_lib_get_vmalloc_page,
-	.ack = pcm_ack,
+	//.ack = pcm_ack,
 };

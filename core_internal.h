@@ -20,16 +20,33 @@ struct avirt_core {
 	struct class *avirt_class;
 	struct config_group *stream_group;
 	unsigned int stream_count;
+	bool streams_sealed;
 };
 
+/**
+ * __avirt_configfs_init - Initialise the configfs system
+ * @core: The avirt_core pointer
+ * @return: 0 on success, negative ERRNO on failure
+ */
 int __init __avirt_configfs_init(struct avirt_core *core);
+
+/**
+ * __avirt_configfs_exit - Clean up and exit the configfs system
+ * @core: The avirt_core pointer
+ */
 void __exit __avirt_configfs_exit(struct avirt_core *core);
 
 /**
- * __avirt_card_register - Register the sound card to user space
+ * __avirt_streams_seal - Register the sound card to user space
  * @return: 0 on success, negative ERRNO on failure
  */
-int __avirt_card_register(void);
+int __avirt_streams_seal(void);
+
+/**
+ * __avirt_streams_sealed - Check whether the streams have been sealed or not
+ * @return: true if sealed, false otherwise
+ */
+bool __avirt_streams_sealed(void);
 
 /**
  * __avirt_stream_find_by_device - Get audio stream from device number

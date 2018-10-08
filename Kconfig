@@ -16,5 +16,6 @@ menuconfig AVIRT
 if AVIRT
 
 source "drivers/staging/avirt/dummy/Kconfig"
+source "drivers/staging/avirt/loopback/Kconfig"
 
 endif

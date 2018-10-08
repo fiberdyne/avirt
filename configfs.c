@@ -10,7 +10,11 @@
 #include <sound/core.h>
 #include "core_internal.h"
 
-static bool streams_sealed = false;
+#define D_LOGNAME "configfs"
+
+#define D_INFOK(fmt, args...) DINFO(D_LOGNAME, fmt, ##args)
+#define D_PRINTK(fmt, args...) DDEBUG(D_LOGNAME, fmt, ##args)
+#define D_ERRORK(fmt, args...) DERROR(D_LOGNAME, fmt, ##args)
 
 static ssize_t cfg_avirt_stream_direction_show(struct config_item *item,
 					       char *page)
@@ -34,9 +38,11 @@ static ssize_t cfg_avirt_stream_map_show(struct config_item *item, char *page)
 static ssize_t cfg_avirt_stream_map_store(struct config_item *item,
 					  const char *page, size_t count)
 {
+	char *split;
 	struct avirt_stream *stream = avirt_stream_from_config_item(item);
 
-	memcpy(stream->map, (char *)page, count);
+	split = strsep((char **)&page, "\n");
+	memcpy(stream->map, (char *)split, count);
 
 	return count;
 }
@@ -70,7 +76,7 @@ static ssize_t cfg_avirt_stream_channels_store(struct config_item *item,
 
 	stream->channels = tmp;
 
-	pr_info("%s [ARGS] channels: %d\n", __func__, stream->channels);
+	D_INFOK("channels: %d", stream->channels);
 
 	return count;
 }
@@ -85,7 +91,7 @@ static struct configfs_attribute *cfg_avirt_stream_attrs[] = {
 
 static void cfg_avirt_stream_release(struct config_item *item)
 {
-	pr_info("%s [ARGS] item->name:%s\n", __func__, item->ci_namebuf);
+	D_INFOK("item->name:%s", item->ci_namebuf);
 	kfree(avirt_stream_from_config_item(item));
 }
 
@@ -109,8 +115,8 @@ cfg_avirt_stream_make_item(struct config_group *group, const char *name)
 	// Get prefix (playback_ or capture_)
 	split = strsep((char **)&name, "_");
 	if (!split) {
-		pr_err("Stream name: '%s' invalid!\n", split);
-		pr_err("Must begin with playback_ * or capture_ *\n");
+		D_ERRORK("Stream name: '%s' invalid!", split);
+		D_ERRORK("Must begin with playback_ * or capture_ *");
 		return ERR_PTR(-EINVAL);
 	}
 	if (!strcmp(split, "playback")) {
@@ -118,8 +124,8 @@ cfg_avirt_stream_make_item(struct config_group *group, const char *name)
 	} else if (!strcmp(split, "capture")) {
 		direction = SNDRV_PCM_STREAM_CAPTURE;
 	} else {
-		pr_err("Stream name: '%s' invalid!\n", split);
-		pr_err("Must begin with playback_ * or capture_ *\n");
+		D_ERRORK("Stream name: '%s' invalid!", split);
+		D_ERRORK("Must begin with playback_ * or capture_ ");
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -137,7 +143,7 @@ cfg_avirt_stream_make_item(struct config_group *group, const char *name)
 static ssize_t cfg_avirt_stream_group_sealed_show(struct config_item *item,
 						  char *page)
 {
-	return snprintf(page, PAGE_SIZE, "%d\n", streams_sealed);
+	return snprintf(page, PAGE_SIZE, "%d\n", __avirt_streams_sealed());
 }
 
 static ssize_t cfg_avirt_stream_group_sealed_store(struct config_item *item,
@@ -147,21 +153,14 @@ static ssize_t cfg_avirt_stream_group_sealed_store(struct config_item *item,
 	unsigned long tmp;
 	char *p = (char *)page;
 
-	if (streams_sealed) {
-		pr_err("AVIRT streams are already sealed!\n");
-		return -EPERM;
-	}
-
 	CHK_ERR(kstrtoul(p, 10, &tmp));
 
 	if (tmp != 1) {
-		pr_err("AVIRT streams can only be sealed, not unsealed!\n");
+		D_ERRORK("streams can only be sealed, not unsealed!");
 		return -ERANGE;
 	}
 
-	streams_sealed = (bool)tmp;
-
-	CHK_ERR(__avirt_card_register());
+	__avirt_streams_seal();
 
 	return count;
 }
@@ -173,12 +172,14 @@ static struct configfs_attribute *cfg_avirt_stream_group_attrs[] = {
 };
 
 static struct configfs_group_operations cfg_avirt_stream_group_ops = {
-	.make_item = cfg_avirt_stream_make_item};
+	.make_item = cfg_avirt_stream_make_item
+};
 
 static struct config_item_type cfg_stream_group_type = {
 	.ct_group_ops = &cfg_avirt_stream_group_ops,
 	.ct_attrs = cfg_avirt_stream_group_attrs,
-	.ct_owner = THIS_MODULE};
+	.ct_owner = THIS_MODULE
+};
 
 static struct config_item_type cfg_avirt_group_type = {
 	.ct_owner = THIS_MODULE,
@@ -203,14 +204,14 @@ int __init __avirt_configfs_init(struct avirt_core *core)
 	mutex_init(&cfg_subsys.su_mutex);
 	err = configfs_register_subsystem(&cfg_subsys);
 	if (err) {
-		pr_err("Cannot register configfs subsys!\n");
+		D_ERRORK("Cannot register configfs subsys!");
 		return err;
 	}
 	core->stream_group = configfs_register_default_group(
 		&cfg_subsys.su_group, "streams", &cfg_stream_group_type);
 	if (IS_ERR(core->stream_group)) {
 		err = PTR_ERR(core->stream_group);
-		pr_err("Cannot register configfs default group 'streams'!\n");
+		D_ERRORK("Cannot register configfs default group 'streams'!");
 		goto exit_configfs;
 	}
 
