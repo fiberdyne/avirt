@@ -74,10 +74,6 @@ static int pcm_open(struct snd_pcm_substream *substream)
 	chans = stream->channels;
 	hw->channels_min = chans;
 	hw->channels_max = chans;
-	hw->buffer_bytes_max =
-		blocksize * hw->periods_max * bytes_per_sample * chans;
-	hw->period_bytes_min = blocksize * bytes_per_sample * chans;
-	hw->period_bytes_max = blocksize * bytes_per_sample * chans;
 
 	// Do additional Audio Path 'open' callback
 	DO_AUDIOPATH_CB(audiopath, open, substream);
