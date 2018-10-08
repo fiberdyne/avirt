@@ -231,14 +231,14 @@ static struct snd_pcm_ops dummyap_pcm_ops = {
 /*******************************************************************************
  * Dummy Audio Path AVIRT registration
  ******************************************************************************/
-int dummy_configure(struct config_group *avirt_stream_group,
+int dummy_configure(struct snd_card *card,
+		    struct config_group *avirt_stream_group,
 		    unsigned int stream_count)
 {
 	// Do something with streams
 
 	struct list_head *entry;
-	list_for_each(entry, &avirt_stream_group->cg_children)
-	{
+	list_for_each (entry, &avirt_stream_group->cg_children) {
 		struct config_item *item =
 			container_of(entry, struct config_item, ci_entry);
 		struct avirt_stream *stream =

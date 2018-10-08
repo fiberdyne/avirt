@@ -32,7 +32,8 @@
  * Each Audio Path registers this at avirt_audiopath_register time.
  * It is then called by the core once AVIRT has been configured
  */
-typedef int (*avirt_audiopath_configure)(struct config_group *stream_group,
+typedef int (*avirt_audiopath_configure)(struct snd_card *card,
+					 struct config_group *stream_group,
 					 unsigned int stream_count);
 
 /**
