@@ -189,6 +189,41 @@ static struct avirt_audiopath_obj *create_avirt_audiopath_obj(const char *uid)
 	return avirt_audiopath;
 }
 
+static struct snd_pcm *pcm_create(struct avirt_stream *stream)
+{
+	bool playback = false, capture = false;
+	struct snd_pcm *pcm;
+	int err;
+
+	if (!strcmp(stream->map, "ap_loopback")) {
+		playback = true;
+		capture = true;
+	} else if (!stream->direction) {
+		playback = true;
+	} else {
+		capture = true;
+	}
+
+	err = snd_pcm_new(core.card, stream->name, stream->device, playback,
+			  capture, &pcm);
+
+	if (err < 0)
+		return ERR_PTR(err);
+
+	// TD MF: IMPORTANT: NEED TO TEST >8 PCM DEVICES ON A
+	// CARD!
+	/** Register driver callbacks */
+	if (playback)
+		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &pcm_ops);
+	if (capture)
+		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &pcm_ops);
+
+	pcm->info_flags = 0;
+	strcpy(pcm->name, stream->name);
+
+	return pcm;
+}
+
 /**
  * destroy_avirt_audiopath_obj - destroys an Audio Path object
  * @name: the Audio Path object
@@ -321,49 +356,44 @@ EXPORT_SYMBOL_GPL(avirt_stream_count);
  */
 struct avirt_stream *__avirt_stream_create(const char *name, int direction)
 {
-	struct snd_pcm *pcm;
 	struct avirt_stream *stream;
-	int err;
 
 	stream = kzalloc(sizeof(*stream), GFP_KERNEL);
 	if (!stream)
 		return ERR_PTR(-ENOMEM);
 
 	strcpy(stream->name, name);
-	strcpy(stream->map, "ap_fddsp");
+	strcpy(stream->map, "none");
 	stream->channels = 0;
 	stream->direction = direction;
 	stream->device = core.stream_count++;
 
-	err = snd_pcm_new(core.card, name, stream->device, !direction,
-			  direction, &pcm);
-	if (err < 0)
-		return ERR_PTR(err);
-
-	// TD MF: IMPORTANT: NEED TO TEST >8 PCM DEVICES ON A
-	// CARD!
-	/** Register driver callbacks */
-	snd_pcm_set_ops(pcm, direction, &pcm_ops);
-
-	pcm->info_flags = 0;
-	strcpy(pcm->name, name);
-
-	pr_info("%s [ARGS] name: %s device:%d\n", __func__, name,
-		stream->device);
-
-	// coreinfo.streams[stream_idx] = stream;
+	D_INFOK("name: %s device:%d", name, stream->device);
 
 	return stream;
 }
 
-int __avirt_card_register(void)
+int __avirt_streams_seal(void)
 {
 	int err = 0;
 	struct avirt_audiopath_obj *ap_obj;
+	struct avirt_stream *stream;
+	struct config_item *item;
+	struct list_head *entry;
 
 	if (core.streams_sealed) {
 		D_ERRORK("streams are already sealed!");
 		return -1;
+	}
+
+	list_for_each (entry, &core.stream_group->cg_children) {
+		item = container_of(entry, struct config_item, ci_entry);
+		stream = avirt_stream_from_config_item(item);
+		if (!stream)
+			return -EFAULT;
+		stream->pcm = pcm_create(stream);
+		if (IS_ERR_OR_NULL(stream->pcm))
+			return (PTR_ERR(stream->pcm));
 	}
 
 	list_for_each_entry (ap_obj, &audiopath_list, list) {

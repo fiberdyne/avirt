@@ -153,11 +153,6 @@ static ssize_t cfg_avirt_stream_group_sealed_store(struct config_item *item,
 	unsigned long tmp;
 	char *p = (char *)page;
 
-	if (__avirt_streams_sealed()) {
-		pr_err("AVIRT streams are already sealed!\n");
-		return -EPERM;
-	}
-
 	CHK_ERR(kstrtoul(p, 10, &tmp));
 
 	if (tmp != 1) {
@@ -165,7 +160,7 @@ static ssize_t cfg_avirt_stream_group_sealed_store(struct config_item *item,
 		return -ERANGE;
 	}
 
-	CHK_ERR(__avirt_card_register());
+	__avirt_streams_seal();
 
 	return count;
 }

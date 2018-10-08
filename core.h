@@ -59,6 +59,7 @@ struct avirt_stream {
 	unsigned int channels; /* Stream channel count */
 	unsigned int device; /* Stream PCM device no. */
 	unsigned int direction; /* Stream direction */
+	struct snd_pcm *pcm; /* ALSA PCM  */
 	struct config_item item; /* configfs item reference */
 };
 
@@ -105,7 +106,7 @@ int avirt_stream_count(unsigned int direction);
  * @return: The item's avirt_stream if successful, NULL otherwise
  */
 static inline struct avirt_stream *
-	avirt_stream_from_config_item(struct config_item *item)
+avirt_stream_from_config_item(struct config_item *item)
 {
 	return item ? container_of(item, struct avirt_stream, item) : NULL;
 }
