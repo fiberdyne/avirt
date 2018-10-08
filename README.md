@@ -11,39 +11,6 @@ A sample dummy Audio Path is provided as an example to show how a low-level audi
 Currently, the Fiberdyne DSP hardmixer is supported on the Renesas R-Car M3 AGL
 reference platform, and a default loopback softmixer is in development.
 
-## Building
-
-### Out Of Tree
-
-The kernel modules can be built either in-tree, or out-of-tree.
-To build both AVIRT and the dummy Audio Path out-of-tree, use the following command:
-
-```sh
-$ make all
-```
-
-If building for [AGL](http://docs.automotivelinux.org/), use the [XDS](http://docs.automotivelinux.org/docs/devguides/en/dev/reference/xds/part-1/0_Abstract.html) build system together with the `make_agl.sh` script:
-
-```sh
-$ ./make_agl.sh ${XDS_SDK_ID}
-```
-
-### In tree
-
-To build in tree, use the [Fiberdyne Linux fork](https://github.com/fiberdyne/linux), which will automatically clone the AVIRT Driver and required AudioPath modules to the `drivers/staging` directory. You can then turn AVIRT Support on by setting to `<M>`. The drivers can be found here:
-
-```
-$ make menuconfig
-
-# Navigate to: Device Drivers--->Staging Drivers--->AVIRT Support
-```
-
-Finally build the kernel with the configuration selected by making.
-
-```
-$ make
-```
-
 ## TODO
 
 - Currently, playback only - implementing capture is WIP.
