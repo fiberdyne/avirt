@@ -1,0 +1,18 @@
+4A Integration
+===================
+
+AVIRT has been integrated with [4a-softmixer](https://github.com/iotbzh/4a-softmixer)
+and [4a-hal-generic](https://github.com/iotbzh/4a-hal-generic) to provide a smooth
+transition from the existing aloop implementation to the future AVIRT loopback implementation.
+
+### User-space Library
+
+The user-space library [libavirt](https://github.com/fiberdyne/libavirt) can be used to configure AVIRT from within a given AGL 4A binding.
+
+### Hardmixer
+
+A new 4A mixer binding has been developed to demonstrate the capabilities of the
+Fiberdyne DSP mixer operating on the HiFi2 core on-board the Renesas R-Car M3 M3ULCB
+AGL reference platform. This is called the 'hardmixer', and is a faster, lower
+latency alternative to the softmixer.
+
