@@ -198,6 +198,7 @@ static struct snd_pcm *pcm_create(struct avirt_stream *stream)
 	if (!strcmp(stream->map, "ap_loopback")) {
 		playback = true;
 		capture = true;
+		(&pcm_ops)->copy_user = NULL;
 	} else if (!stream->direction) {
 		playback = true;
 	} else {
