@@ -56,10 +56,10 @@ static int pcm_open(struct snd_pcm_substream *substream)
 	struct snd_pcm_hardware *hw;
 	unsigned int chans = 0;
 
-	char *uid = "ap_fddsp"; // TD MF: Make this dynamic!
-	audiopath = avirt_audiopath_get(uid);
+	stream = __avirt_stream_find_by_device(substream->pcm->device);
+	audiopath = avirt_audiopath_get(stream->map);
 	CHK_NULL_V(audiopath, -EFAULT, "Cannot find Audio Path uid: '%s'!",
-		   uid);
+		   stream->map);
 	substream->private_data = audiopath;
 
 	// Copy the hw params from the audiopath to the pcm
