@@ -9,7 +9,11 @@
 
 #include "core_internal.h"
 
-#define AP_LOGNAME "CORE"
+#define D_LOGNAME "pcm"
+
+#define D_INFOK(fmt, args...) DINFO(D_LOGNAME, fmt, ##args)
+#define D_PRINTK(fmt, args...) DDEBUG(D_LOGNAME, fmt, ##args)
+#define D_ERRORK(fmt, args...) DERROR(D_LOGNAME, fmt, ##args)
 
 #define DO_AUDIOPATH_CB(ap, callback, substream, ...)                          \
 	do {                                                                   \
@@ -32,7 +36,6 @@ void avirt_pcm_period_elapsed(struct snd_pcm_substream *substream)
 	snd_pcm_period_elapsed(substream);
 }
 EXPORT_SYMBOL_GPL(avirt_pcm_period_elapsed);
-
 
 /*******************************************************************************
  * ALSA PCM Callbacks
@@ -92,7 +95,6 @@ static int pcm_open(struct snd_pcm_substream *substream)
  */
 static int pcm_close(struct snd_pcm_substream *substream)
 {
-	DINFO(AP_LOGNAME, "");
 	// Do additional Audio Path 'close' callback
 	DO_AUDIOPATH_CB(((struct avirt_audiopath *)substream->private_data),
 			close, substream);
@@ -117,8 +119,6 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
 	size_t bufsz;
 	struct avirt_audiopath *audiopath;
 	struct avirt_stream *stream;
-
-	DINFO(AP_LOGNAME, "");
 
 	stream = __avirt_stream_find_by_device(substream->pcm->device);
 	if (IS_ERR_VALUE(stream) || !stream)
@@ -197,8 +197,6 @@ static int pcm_prepare(struct snd_pcm_substream *substream)
  */
 static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	DINFO(AP_LOGNAME, "");
-
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
@@ -206,7 +204,7 @@ static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 		break;
 	default:
-		pr_err("trigger must be START or STOP");
+		D_ERRORK("Invalid trigger cmd: %d", cmd);
 		return -EINVAL;
 	}
 

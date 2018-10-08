@@ -16,16 +16,16 @@
 #define MAX_STREAMS 16
 #define MAX_NAME_LEN 80
 
-#define DINFO(ap, fmt, args...)                                           \
-	printk(KERN_INFO "[%s]: %d:%s " fmt "\n", ap, __LINE__, __func__, \
-	       ##args)
+#define DINFO(logname, fmt, args...)                                           \
+	printk(KERN_INFO "[AVIRT][%s]: " fmt "\n", logname, ##args)
 
-#define DERROR(ap, fmt, args...) \
-	printk(KERN_ERR "[%s]: %d:%s " fmt "\n", ap, __LINE__, __func__, ##args)
+#define DERROR(logname, fmt, args...)                                          \
+	printk(KERN_ERR "[AVIRT][%s]: %d:%s " fmt "\n", logname, __LINE__,     \
+	       __func__, ##args)
 
-#define DPRINT(ap, fmt, args...)                                           \
-	printk(KERN_DEBUG "[%s]: %d:%s " fmt "\n", ap, __LINE__, __func__, \
-	       ##args)
+#define DDEBUG(logname, fmt, args...)                                          \
+	printk(KERN_DEBUG "[AVIRT][%s]: %d:%s " fmt "\n", logname, __LINE__,   \
+	       __func__, ##args)
 
 /**
  * AVIRT Audio Path configure function type

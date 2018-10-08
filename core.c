@@ -20,11 +20,11 @@ MODULE_AUTHOR("MFARRUGI <mark.farrugia@fiberdyne.com.au>");
 MODULE_DESCRIPTION("A configurable virtual soundcard");
 MODULE_LICENSE("GPL v2");
 
-#define AP_LOGNAME "CORE"
+#define D_LOGNAME "core"
 
-#define D_INFOK(fmt, args...) DINFO(AP_LOGNAME, fmt, ##args)
-#define D_PRINTK(fmt, args...) DPRINT(AP_LOGNAME, fmt, ##args)
-#define D_ERRORK(fmt, args...) DERROR(AP_LOGNAME, fmt, ##args)
+#define D_INFOK(fmt, args...) DINFO(D_LOGNAME, fmt, ##args)
+#define D_PRINTK(fmt, args...) DDEBUG(D_LOGNAME, fmt, ##args)
+#define D_ERRORK(fmt, args...) DERROR(D_LOGNAME, fmt, ##args)
 
 #define SND_AVIRTUAL_DRIVER "snd_avirt"
 
@@ -51,7 +51,7 @@ static struct kset *avirt_audiopath_kset;
 static struct kobject *kobj;
 
 #define to_audiopath_obj(d) container_of(d, struct avirt_audiopath_obj, kobj)
-#define to_audiopath_attr(a) \
+#define to_audiopath_attr(a)                                                   \
 	container_of(a, struct avirt_audiopath_attribute, attr)
 
 /**
@@ -228,13 +228,13 @@ int avirt_audiopath_register(struct avirt_audiopath *audiopath,
 	struct avirt_audiopath_obj *audiopath_obj;
 
 	if (!audiopath) {
-		pr_err("Bad audio path\n");
+		D_ERRORK("Audio Path is NULL!");
 		return -EINVAL;
 	}
 
 	audiopath_obj = create_avirt_audiopath_obj(audiopath->uid);
 	if (!audiopath_obj) {
-		pr_info("failed to alloc driver object\n");
+		D_INFOK("Failed to alloc driver object");
 		return -ENOMEM;
 	}
 	audiopath_obj->path = audiopath;
@@ -266,19 +266,19 @@ int avirt_audiopath_deregister(struct avirt_audiopath *audiopath)
 
 	// Check if audio path is registered
 	if (!audiopath) {
-		pr_err("Bad Audio Path Driver\n");
+		D_ERRORK("Bad Audio Path Driver");
 		return -EINVAL;
 	}
 
 	audiopath_obj = audiopath->context;
 	if (!audiopath_obj) {
-		pr_info("driver not registered.\n");
+		D_INFOK("driver not registered");
 		return -EINVAL;
 	}
 
 	list_del(&audiopath_obj->list);
 	destroy_avirt_audiopath_obj(audiopath_obj);
-	pr_info("Deregistered Audio Path %s\n", audiopath->uid);
+	D_INFOK("Deregistered Audio Path %s", audiopath->uid);
 
 	return 0;
 }
@@ -362,19 +362,19 @@ int __avirt_card_register(void)
 	struct avirt_audiopath_obj *ap_obj;
 
 	if (core.streams_sealed) {
-		pr_err("Streams already sealed!\n");
+		D_ERRORK("streams are already sealed!");
 		return -1;
 	}
 
 	list_for_each_entry (ap_obj, &audiopath_list, list) {
-		pr_info("Calling configure for AP uid: %s\n",
-			ap_obj->path->uid);
-		ap_obj->path->configure(core.stream_group, core.stream_count);
+		D_INFOK("configure() AP uid: %s", ap_obj->path->uid);
+		ap_obj->path->configure(core.card, core.stream_group,
+					core.stream_count);
 	}
 
 	err = snd_card_register(core.card);
 	if (err < 0) {
-		pr_err("Sound card registration failed!");
+		D_ERRORK("Sound card registration failed!");
 		snd_card_free(core.card);
 	}
 
@@ -395,7 +395,7 @@ struct avirt_stream *__avirt_stream_find_by_device(unsigned int device)
 	struct list_head *entry;
 
 	if (device >= core.stream_count) {
-		pr_err("Stream device number is greater than number streams available\n");
+		D_ERRORK("Stream device number is larger than stream count");
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -418,12 +418,12 @@ static int __init core_init(void)
 {
 	int err;
 
-	pr_info("Alsa Virtual Sound Driver avirt-%d.%d.%d\n",
-		coreinfo.version[0], coreinfo.version[1], coreinfo.version[2]);
+	D_INFOK("Alsa Virtual Sound Driver avirt-%d.%d.%d", coreinfo.version[0],
+		coreinfo.version[1], coreinfo.version[2]);
 
 	core.avirt_class = class_create(THIS_MODULE, SND_AVIRTUAL_DRIVER);
 	if (IS_ERR(core.avirt_class)) {
-		pr_err("No udev support\n");
+		D_ERRORK("No udev support");
 		return PTR_ERR(core.avirt_class);
 	}
 
@@ -437,7 +437,7 @@ static int __init core_init(void)
 	err = snd_card_new(core.dev, SNDRV_DEFAULT_IDX1, "avirt", THIS_MODULE,
 			   0, &core.card);
 	if (err < 0) {
-		pr_err("Failed to create sound card");
+		D_ERRORK("Failed to create sound card");
 		goto exit_class_container;
 	}
 
