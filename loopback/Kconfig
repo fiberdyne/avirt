@@ -1,0 +1,12 @@
+#
+# AVIRT Loopback Audio Path
+#
+
+config AVIRT_LOOPBACKAP
+	tristate "LoopbackAP"
+	select SND_PCM
+	---help---
+	  Say Y here if you want to add loopback audio path.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called avirt_loopbackap.
