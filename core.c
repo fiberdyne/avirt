@@ -15,10 +15,11 @@
 
 #include "core_internal.h"
 
-MODULE_AUTHOR("JOSHANNE <james.oshannessy@fiberdyne.com.au>");
-MODULE_AUTHOR("MFARRUGI <mark.farrugia@fiberdyne.com.au>");
-MODULE_DESCRIPTION("A configurable virtual soundcard");
+MODULE_AUTHOR("James O'Shannessy <james.oshannessy@fiberdyne.com.au>");
+MODULE_AUTHOR("Mark Farrugia <mark.farrugia@fiberdyne.com.au>");
+MODULE_DESCRIPTION("ALSA virtual, dynamic soundcard");
 MODULE_LICENSE("GPL v2");
+MODULE_SUPPORTED_DEVICE("{{ALSA,AVIRT soundcard}}");
 
 #define D_LOGNAME "core"
 

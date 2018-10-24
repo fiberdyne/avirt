@@ -11,9 +11,9 @@
 #include <linux/slab.h>
 #include <avirt/core.h>
 
-MODULE_AUTHOR("JOSHANNE <james.oshannessy@fiberdyne.com.au>");
-MODULE_AUTHOR("MFARRUGI <mark.farrugia@fiberdyne.com.au>");
-MODULE_DESCRIPTION("Sample Audio Path Module Interface");
+MODULE_AUTHOR("James O'Shannessy <james.oshannessy@fiberdyne.com.au>");
+MODULE_AUTHOR("Mark Farrugia <mark.farrugia@fiberdyne.com.au>");
+MODULE_DESCRIPTION("Dummy Audio Path for AVIRT");
 MODULE_LICENSE("GPL v2");
 
 #define DUMMY_SAMPLE_RATE 48000

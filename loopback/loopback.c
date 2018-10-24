@@ -1,5 +1,5 @@
 /*
- *  Loopback soundcard
+ *  Loopback Audio Path for AVIRT
  *
  *  Original code:
  *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
@@ -48,7 +48,7 @@
 #include <avirt/core.h>
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
-MODULE_DESCRIPTION("A loopback soundcard");
+MODULE_DESCRIPTION("Loopback Audio Path for AVIRT");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{ALSA,Loopback soundcard}}");
 
