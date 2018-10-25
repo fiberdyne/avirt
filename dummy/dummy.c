@@ -13,7 +13,7 @@
 
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <avirt/core.h>
+#include <sound/avirt.h>
 
 MODULE_AUTHOR("James O'Shannessy <james.oshannessy@fiberdyne.com.au>");
 MODULE_AUTHOR("Mark Farrugia <mark.farrugia@fiberdyne.com.au>");

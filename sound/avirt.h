@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * ALSA Virtual Soundcard
+ * AVIRT - ALSA Virtual Soundcard
  *
- * core.h - System-level header for virtual ALSA card
- *
- * Copyright (C) 2010-2018 Fiberdyne Systems Pty Ltd
+ * Copyright (c) 2010-2018 Fiberdyne Systems Pty Ltd
+ * 
+ * avirt.h - AVIRT system-level header
  */
 
-#ifndef __AVIRT_CORE_H__
-#define __AVIRT_CORE_H__
+#ifndef __SOUND_AVIRT_H
+#define __SOUND_AVIRT_H
 
+#include <sound/core.h>
 #include <sound/pcm.h>
 #include <linux/configfs.h>
 
@@ -17,15 +18,13 @@
 #define MAX_NAME_LEN 80
 
 #define DINFO(logname, fmt, args...)                                           \
-	printk(KERN_INFO "[AVIRT][%s]: " fmt "\n", logname, ##args)
+	snd_printk(KERN_INFO "AVIRT: %s: " fmt "\n", logname, ##args)
 
 #define DERROR(logname, fmt, args...)                                          \
-	printk(KERN_ERR "[AVIRT][%s]: %d:%s " fmt "\n", logname, __LINE__,     \
-	       __func__, ##args)
+	snd_printk(KERN_ERR "AVIRT: %s: " fmt "\n", logname, ##args)
 
 #define DDEBUG(logname, fmt, args...)                                          \
-	printk(KERN_DEBUG "[AVIRT][%s]: %d:%s " fmt "\n", logname, __LINE__,   \
-	       __func__, ##args)
+	snd_printk(KERN_DEBUG "AVIRT: %s: " fmt "\n", logname, ##args)
 
 /**
  * AVIRT Audio Path configure function type
@@ -120,4 +119,4 @@ avirt_stream_from_config_item(struct config_item *item)
  */
 void avirt_pcm_period_elapsed(struct snd_pcm_substream *substream);
 
-#endif // __AVIRT_CORE_H__
+#endif // __SOUND_AVIRT_H

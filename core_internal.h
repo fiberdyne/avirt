@@ -7,10 +7,10 @@
  * core_internal.h - AVIRT internal header
  */
 
-#ifndef __AVIRT_CORE_INTERNAL_H__
-#define __AVIRT_CORE_INTERNAL_H__
+#ifndef __SOUND_AVIRT_CORE_H
+#define __SOUND_AVIRT_CORE_H
 
-#include <avirt/core.h>
+#include <sound/avirt.h>
 
 #include "utils.h"
 
@@ -64,4 +64,4 @@ struct avirt_stream *__avirt_stream_find_by_device(unsigned int device);
  */
 struct avirt_stream *__avirt_stream_create(const char *name, int direction);
 
-#endif // __AVIRT_CORE_INTERNAL_H__
+#endif /* __SOUND_AVIRT_CORE_H */

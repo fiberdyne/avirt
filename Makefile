@@ -7,7 +7,7 @@ avirt_core-y += configfs.o
 ifeq ($(CONFIG_AVIRT_BUILDLOCAL),)
 	CCFLAGS_AVIRT := "drivers/staging/"
 else
-	CCFLAGS_AVIRT := "$(PWD)/../"
+	CCFLAGS_AVIRT := "$(PWD)"
 endif
 
 ccflags-y += -I${CCFLAGS_AVIRT}

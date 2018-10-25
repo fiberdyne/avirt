@@ -9,9 +9,8 @@
 
 #include <linux/module.h>
 #include <linux/string.h>
-#include <sound/core.h>
+#include <linux/slab.h>
 #include <sound/initval.h>
-#include <avirt/core.h>
 
 #include "core_internal.h"
 

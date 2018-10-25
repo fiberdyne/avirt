@@ -7,7 +7,8 @@
  * configfs.c - AVIRT configfs support
  */
 
-#include <sound/core.h>
+#include <linux/slab.h>
+
 #include "core_internal.h"
 
 #define D_LOGNAME "configfs"

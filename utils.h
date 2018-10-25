@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * ALSA Virtual Soundcard
+ * AVIRT - ALSA Virtual Soundcard
  *
- * utils.h - Some useful utilities for AVIRT
- *
- * Copyright (C) 2010-2018 Fiberdyne Systems Pty Ltd
+ * Copyright (c) 2010-2018 Fiberdyne Systems Pty Ltd
+ * 
+ * utils.h - Some useful macros/utils for AVIRT
  */
 
-#ifndef __AVIRT_UTILS_H__
-#define __AVIRT_UTILS_H__
+#ifndef __SOUND_AVIRT_UTILS_H
+#define __SOUND_AVIRT_UTILS_H
 
 #include <linux/slab.h>
 
@@ -46,4 +46,4 @@
 		}                                                              \
 	} while (0)
 
-#endif
+#endif /* __SOUND_AVIRT_UTILS_H */
