@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * ALSA Virtual Soundcard
+ * AVIRT - ALSA Virtual Soundcard
  *
- * core.c - Implementation of core module for virtual ALSA card
- *
- * Copyright (C) 2010-2018 Fiberdyne Systems Pty Ltd
+ * Copyright (c) 2010-2018 Fiberdyne Systems Pty Ltd
+ * 
+ * core.c - AVIRT core internals
  */
 
 #include <linux/module.h>

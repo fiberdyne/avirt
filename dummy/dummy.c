@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0
-/*
- * ALSA Virtual Soundcard
+/* 
+ * Dummy Audio Path for AVIRT
+ * 
+ * Original systimer code:
+ * Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
- * dummy_audiopath.c - AVIRT sample Audio Path definition
- *
- * Copyright (C) 2010-2018 Fiberdyne Systems Pty Ltd
+ * Adapt to use AVIRT
+ * Copyright (c) 2010-2018 Fiberdyne Systems Pty Ltd
+ *  
+ * dummy.c - Dummy Audio Path driver implementation for AVIRT
  */
 
 #include <linux/module.h>

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * ALSA Virtual Soundcard
+ * AVIRT - ALSA Virtual Soundcard
  *
- * alsa-pcm.c - AVIRT ALSA PCM interface
- *
- * Copyright (C) 2010-2018 Fiberdyne Systems Pty Ltd
+ * Copyright (c) 2010-2018 Fiberdyne Systems Pty Ltd
+ * 
+ * alsa-pcm.c - AVIRT PCM interface
  */
 
 #include "core_internal.h"

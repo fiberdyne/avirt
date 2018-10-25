@@ -1,35 +1,23 @@
-/*
- *  Loopback Audio Path for AVIRT
- *
- *  Original code:
- *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
- *
- *  More accurate positioning and full-duplex support:
- *  Copyright (c) Ahmet İnan <ainan at mathematik.uni-freiburg.de>
- *
- *  Major (almost complete) rewrite:
- *  Copyright (c) by Takashi Iwai <tiwai@suse.de>
- *
- *  A next major update in 2010 (separate timers for playback and capture):
- *  Copyright (c) Jaroslav Kysela <perex@perex.cz>
+// SPDX-License-Identifier: GPL-2.0
+/* 
+ * Loopback Audio Path for AVIRT
  * 
- *  Adapt to use AVIRT, looping is now conducted on the same device
- *  Copyright (c) by Mark Farrugia <mark.farrugia@fiberdyne.com.au>
+ * Original code:
+ * Copyright (c) by Jaroslav Kysela <perex@perex.cz>
+ * 
+ * More accurate positioning and full-duplex support:
+ * Copyright (c) Ahmet İnan <ainan at mathematik.uni-freiburg.de>
  *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ * Major (almost complete) rewrite:
+ * Copyright (c) by Takashi Iwai <tiwai@suse.de>
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
+ * A next major update in 2010 (separate timers for playback and capture):
+ * Copyright (c) Jaroslav Kysela <perex@perex.cz>
+ * 
+ * Adapt to use AVIRT, looping is now conducted on the same PCM device
+ * Copyright (c) 2010-2018 Fiberdyne Systems Pty Ltd
+ * 
+ * loopback.c - Loopback Audio Path driver implementation for AVIRT
  */
 
 #include <linux/init.h>
