@@ -12,7 +12,7 @@
 #include <linux/slab.h>
 #include <sound/initval.h>
 
-#include "core_internal.h"
+#include "core.h"
 
 MODULE_AUTHOR("James O'Shannessy <james.oshannessy@fiberdyne.com.au>");
 MODULE_AUTHOR("Mark Farrugia <mark.farrugia@fiberdyne.com.au>");

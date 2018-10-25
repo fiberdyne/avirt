@@ -9,7 +9,7 @@
 
 #include <linux/slab.h>
 
-#include "core_internal.h"
+#include "core.h"
 
 #define D_LOGNAME "configfs"
 
@@ -105,7 +105,7 @@ static struct config_item_type cfg_avirt_stream_type = {
 };
 
 static struct config_item *
-cfg_avirt_stream_make_item(struct config_group *group, const char *name)
+	cfg_avirt_stream_make_item(struct config_group *group, const char *name)
 {
 	char *split;
 	int direction;

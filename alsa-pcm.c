@@ -7,7 +7,7 @@
  * alsa-pcm.c - AVIRT PCM interface
  */
 
-#include "core_internal.h"
+#include "core.h"
 
 #define D_LOGNAME "pcm"
 

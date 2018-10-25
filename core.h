@@ -4,7 +4,7 @@
  *
  * Copyright (c) 2010-2018 Fiberdyne Systems Pty Ltd
  * 
- * core_internal.h - AVIRT internal header
+ * core.h - AVIRT internal header
  */
 
 #ifndef __SOUND_AVIRT_CORE_H
