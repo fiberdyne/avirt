@@ -55,8 +55,7 @@ static int pcm_open(struct snd_pcm_substream *substream)
 
 	stream = __avirt_stream_find_by_device(substream->pcm->device);
 	audiopath = avirt_audiopath_get(stream->map);
-	CHK_NULL_V(audiopath, -EFAULT, "Cannot find Audio Path uid: '%s'!",
-		   stream->map);
+	CHK_NULL_V(audiopath, "Cannot find Audio Path uid: '%s'!", stream->map);
 	substream->private_data = audiopath;
 
 	// Copy the hw params from the audiopath to the pcm

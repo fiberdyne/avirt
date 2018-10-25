@@ -10,39 +10,32 @@
 #ifndef __SOUND_AVIRT_UTILS_H
 #define __SOUND_AVIRT_UTILS_H
 
-#include <linux/slab.h>
-
-#define PRINT_ERR(errno, errmsg)                                               \
-	pr_err("[%s]:[ERRNO:%d]: %s \n", __func__, errno, (errmsg));
-
 #define CHK_ERR(errno)                                                         \
 	do {                                                                   \
 		if ((errno) < 0)                                               \
 			return (errno);                                        \
 	} while (0)
 
-#define CHK_ERR_V(errno, errmsg, ...)                                          \
+#define CHK_ERR_V(errno, fmt, args...)                                         \
 	do {                                                                   \
 		if ((errno) < 0) {                                             \
-			PRINT_ERR((errno), (errmsg), ##__VA_ARGS__)            \
+			DERROR(D_LOGNAME, (fmt), ##args)                       \
 			return (errno);                                        \
 		}                                                              \
 	} while (0)
 
-#define CHK_NULL(x, errno)                                                     \
+#define CHK_NULL(x)                                                            \
 	do {                                                                   \
 		if (!(x))                                                      \
-			return errno;                                          \
+			return -EFAULT;                                        \
 	} while (0)
 
-#define CHK_NULL_V(x, errno, errmsg, ...)                                      \
+#define CHK_NULL_V(x, fmt, args...)                                            \
 	do {                                                                   \
 		if (!(x)) {                                                    \
-			char *errmsg_done =                                    \
-				kasprintf(GFP_KERNEL, errmsg, ##__VA_ARGS__);  \
-			PRINT_ERR(EFAULT, errmsg_done);                        \
-			kfree(errmsg_done);                                    \
-			return errno;                                          \
+			DERROR(D_LOGNAME, "[ERRNO: %d] " fmt, -EFAULT,         \
+			       ##args);                                        \
+			return -EFAULT;                                        \
 		}                                                              \
 	} while (0)
 
