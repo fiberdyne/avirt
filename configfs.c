@@ -76,8 +76,6 @@ static ssize_t cfg_avirt_stream_channels_store(struct config_item *item,
 
 	stream->channels = tmp;
 
-	D_INFOK("channels: %d", stream->channels);
-
 	return count;
 }
 CONFIGFS_ATTR(cfg_avirt_stream_, channels);

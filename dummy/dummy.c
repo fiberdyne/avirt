@@ -20,6 +20,12 @@ MODULE_AUTHOR("Mark Farrugia <mark.farrugia@fiberdyne.com.au>");
 MODULE_DESCRIPTION("Dummy Audio Path for AVIRT");
 MODULE_LICENSE("GPL v2");
 
+#define AP_UID "ap_dummy"
+
+#define AP_INFOK(fmt, args...) DINFO(AP_UID, fmt, ##args)
+#define AP_PRINTK(fmt, args...) DDEBUG(AP_UID, fmt, ##args)
+#define AP_ERRORK(fmt, args...) DERROR(AP_UID, fmt, ##args)
+
 #define DUMMY_SAMPLE_RATE 48000
 #define DUMMY_BLOCKSIZE 512
 #define DUMMY_PERIODS_MIN 1
@@ -247,8 +253,8 @@ int dummy_configure(struct snd_card *card,
 			container_of(entry, struct config_item, ci_entry);
 		struct avirt_stream *stream =
 			avirt_stream_from_config_item(item);
-		pr_info("%s: stream name:%s device:%d channels:%d\n", __func__,
-			stream->name, stream->device, stream->channels);
+		AP_INFOK("stream name:%s device:%d channels:%d", stream->name,
+			 stream->device, stream->channels);
 	}
 
 	return 0;

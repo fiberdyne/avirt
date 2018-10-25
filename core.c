@@ -19,7 +19,6 @@ MODULE_AUTHOR("James O'Shannessy <james.oshannessy@fiberdyne.com.au>");
 MODULE_AUTHOR("Mark Farrugia <mark.farrugia@fiberdyne.com.au>");
 MODULE_DESCRIPTION("ALSA virtual, dynamic soundcard");
 MODULE_LICENSE("GPL v2");
-MODULE_SUPPORTED_DEVICE("{{ALSA,AVIRT soundcard}}");
 
 #define D_LOGNAME "core"
 
@@ -196,6 +195,7 @@ static struct snd_pcm *pcm_create(struct avirt_stream *stream)
 	struct snd_pcm *pcm;
 	int err;
 
+	/** Special case: loopback */
 	if (!strcmp(stream->map, "ap_loopback")) {
 		playback = true;
 		capture = true;
@@ -212,8 +212,6 @@ static struct snd_pcm *pcm_create(struct avirt_stream *stream)
 	if (err < 0)
 		return ERR_PTR(err);
 
-	// TD MF: IMPORTANT: NEED TO TEST >8 PCM DEVICES ON A
-	// CARD!
 	/** Register driver callbacks */
 	if (playback)
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &pcm_ops);
