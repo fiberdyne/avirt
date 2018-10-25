@@ -4,7 +4,7 @@
  *
  * Copyright (c) 2010-2018 Fiberdyne Systems Pty Ltd
  *
- * alsa-pcm.c - AVIRT PCM interface
+ * pcm.c - AVIRT PCM interface
  */
 
 #include "core.h"

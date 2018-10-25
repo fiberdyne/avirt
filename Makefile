@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 obj-$(CONFIG_AVIRT) += snd-avirt-core.o
 snd-avirt-core-y := core.o
-snd-avirt-core-y += alsa-pcm.o
+snd-avirt-core-y += pcm.o
 snd-avirt-core-y += configfs.o
 
 ifeq ($(CONFIG_AVIRT_BUILDLOCAL),)
