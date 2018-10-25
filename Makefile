@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
-obj-$(CONFIG_AVIRT) += avirt_core.o
-avirt_core-y := core.o
-avirt_core-y += alsa-pcm.o
-avirt_core-y += configfs.o
+obj-$(CONFIG_AVIRT) += snd-avirt-core.o
+snd-avirt-core-y := core.o
+snd-avirt-core-y += alsa-pcm.o
+snd-avirt-core-y += configfs.o
 
 ifeq ($(CONFIG_AVIRT_BUILDLOCAL),)
 	CCFLAGS_AVIRT := "drivers/staging/"
@@ -13,8 +13,8 @@ endif
 ccflags-y += -I${CCFLAGS_AVIRT}
 
 $(info $(KERNELRELEASE))
-obj-$(CONFIG_AVIRT_DUMMYAP)	+= dummy/
-obj-$(CONFIG_AVIRT_LOOPBACKAP)	+= loopback/
+obj-$(CONFIG_AVIRT_AP_DUMMY)	+= dummy/
+obj-$(CONFIG_AVIRT_AP_LOOPBACK)	+= loopback/
 
 ###
 # For out-of-tree building
@@ -29,8 +29,8 @@ endif
 
 all:
 	CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y \
-	CONFIG_AVIRT_DUMMYAP=m \
-	CONFIG_AVIRT_LOOPBACKAP=m \
+	CONFIG_AVIRT_AP_DUMMY=m \
+	CONFIG_AVIRT_AP_LOOPBACK=m \
 	make -C $(KERNEL_SRC) M=$(PWD)
 
 clean:

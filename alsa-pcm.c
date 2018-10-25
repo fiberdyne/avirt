@@ -3,7 +3,7 @@
  * AVIRT - ALSA Virtual Soundcard
  *
  * Copyright (c) 2010-2018 Fiberdyne Systems Pty Ltd
- * 
+ *
  * alsa-pcm.c - AVIRT PCM interface
  */
 
@@ -15,24 +15,24 @@
 #define D_PRINTK(fmt, args...) DDEBUG(D_LOGNAME, fmt, ##args)
 #define D_ERRORK(fmt, args...) DERROR(D_LOGNAME, fmt, ##args)
 
-#define DO_AUDIOPATH_CB(ap, callback, substream, ...)                          \
-	(((ap)->pcm_ops->callback) ?                                           \
-		 (ap)->pcm_ops->callback((substream), ##__VA_ARGS__) :         \
+#define DO_AUDIOPATH_CB(ap, callback, substream, ...)                  \
+	(((ap)->pcm_ops->callback) ?                                   \
+		 (ap)->pcm_ops->callback((substream), ##__VA_ARGS__) : \
 		 0)
 
 /**
- * avirt_pcm_period_elapsed - PCM buffer complete callback
+ * snd_avirt_pcm_period_elapsed - PCM buffer complete callback
  * @substreamid: pointer to ALSA PCM substream
  *
- * This should be called from a child Audio Path once it has finished processing
- * the pcm buffer
+ * This should be called from a child Audio Path once it has finished
+ * processing the pcm buffer
  */
-void avirt_pcm_period_elapsed(struct snd_pcm_substream *substream)
+void snd_avirt_pcm_period_elapsed(struct snd_pcm_substream *substream)
 {
 	// Notify ALSA middle layer of the elapsed period boundary
 	snd_pcm_period_elapsed(substream);
 }
-EXPORT_SYMBOL_GPL(avirt_pcm_period_elapsed);
+EXPORT_SYMBOL_GPL(snd_avirt_pcm_period_elapsed);
 
 /*******************************************************************************
  * ALSA PCM Callbacks
@@ -41,20 +41,20 @@ EXPORT_SYMBOL_GPL(avirt_pcm_period_elapsed);
  * pcm_open - Implements 'open' callback for PCM middle layer
  * @substream: pointer to ALSA PCM substream
  *
- * This is called when an ALSA PCM substream is opened. The substream device is
- * configured here.
+ * This is called when an ALSA PCM substream is opened. The substream device
+ * is configured here.
  *
  * Returns 0 on success or error code otherwise.
  */
 static int pcm_open(struct snd_pcm_substream *substream)
 {
-	struct avirt_audiopath *audiopath;
-	struct avirt_stream *stream;
+	struct snd_avirt_audiopath *audiopath;
+	struct snd_avirt_stream *stream;
 	struct snd_pcm_hardware *hw;
 	unsigned int chans = 0;
 
-	stream = __avirt_stream_find_by_device(substream->pcm->device);
-	audiopath = avirt_audiopath_get(stream->map);
+	stream = snd_avirt_stream_find_by_device(substream->pcm->device);
+	audiopath = snd_avirt_audiopath_get(stream->map);
 	CHK_NULL_V(audiopath, "Cannot find Audio Path uid: '%s'!", stream->map);
 	substream->private_data = audiopath;
 
@@ -62,7 +62,7 @@ static int pcm_open(struct snd_pcm_substream *substream)
 	hw = &substream->runtime->hw;
 	memcpy(hw, audiopath->hw, sizeof(struct snd_pcm_hardware));
 
-	stream = __avirt_stream_find_by_device(substream->pcm->device);
+	stream = snd_avirt_stream_find_by_device(substream->pcm->device);
 	if (IS_ERR_VALUE(stream) || !stream)
 		return PTR_ERR(stream);
 
@@ -87,7 +87,7 @@ static int pcm_close(struct snd_pcm_substream *substream)
 {
 	// Do additional Audio Path 'close' callback
 	return DO_AUDIOPATH_CB(
-		((struct avirt_audiopath *)substream->private_data), close,
+		((struct snd_avirt_audiopath *)substream->private_data), close,
 		substream);
 }
 
@@ -106,10 +106,10 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	int retval;
 	size_t bufsz;
-	struct avirt_audiopath *audiopath;
-	struct avirt_stream *stream;
+	struct snd_avirt_audiopath *audiopath;
+	struct snd_avirt_stream *stream;
 
-	stream = __avirt_stream_find_by_device(substream->pcm->device);
+	stream = snd_avirt_stream_find_by_device(substream->pcm->device);
 	if (IS_ERR_VALUE(stream) || !stream)
 		return PTR_ERR(stream);
 
@@ -120,7 +120,7 @@ static int pcm_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	audiopath = ((struct avirt_audiopath *)substream->private_data);
+	audiopath = ((struct snd_avirt_audiopath *)substream->private_data);
 	bufsz = params_buffer_bytes(hw_params) * audiopath->hw->periods_max;
 
 	retval = snd_pcm_lib_alloc_vmalloc_buffer(substream, bufsz);
@@ -145,8 +145,8 @@ static int pcm_hw_free(struct snd_pcm_substream *substream)
 
 	// Do additional Audio Path 'hw_free' callback
 	err = DO_AUDIOPATH_CB(
-		((struct avirt_audiopath *)substream->private_data), hw_free,
-		substream);
+		((struct snd_avirt_audiopath *)substream->private_data),
+		hw_free, substream);
 
 	return snd_pcm_lib_free_vmalloc_buffer(substream);
 }
@@ -165,8 +165,8 @@ static int pcm_prepare(struct snd_pcm_substream *substream)
 {
 	// Do additional Audio Path 'prepare' callback
 	return DO_AUDIOPATH_CB(
-		((struct avirt_audiopath *)substream->private_data), prepare,
-		substream);
+		((struct snd_avirt_audiopath *)substream->private_data),
+		prepare, substream);
 }
 
 /**
@@ -194,8 +194,8 @@ static int pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 
 	// Do additional Audio Path 'trigger' callback
 	return DO_AUDIOPATH_CB(
-		((struct avirt_audiopath *)substream->private_data), trigger,
-		substream, cmd);
+		((struct snd_avirt_audiopath *)substream->private_data),
+		trigger, substream, cmd);
 }
 
 /**
@@ -212,8 +212,8 @@ static snd_pcm_uframes_t pcm_pointer(struct snd_pcm_substream *substream)
 {
 	// Do additional Audio Path 'pointer' callback
 	return DO_AUDIOPATH_CB(
-		((struct avirt_audiopath *)substream->private_data), pointer,
-		substream);
+		((struct snd_avirt_audiopath *)substream->private_data),
+		pointer, substream);
 }
 
 /**
@@ -228,14 +228,14 @@ static snd_pcm_uframes_t pcm_pointer(struct snd_pcm_substream *substream)
  *
  * Returns 0 on success or error code otherwise
  */
-static int
-pcm_get_time_info(struct snd_pcm_substream *substream,
-		  struct timespec *system_ts, struct timespec *audio_ts,
-		  struct snd_pcm_audio_tstamp_config *audio_tstamp_config,
-		  struct snd_pcm_audio_tstamp_report *audio_tstamp_report)
+static int pcm_get_time_info(
+	struct snd_pcm_substream *substream, struct timespec *system_ts,
+	struct timespec *audio_ts,
+	struct snd_pcm_audio_tstamp_config *audio_tstamp_config,
+	struct snd_pcm_audio_tstamp_report *audio_tstamp_report)
 {
 	return DO_AUDIOPATH_CB(
-		((struct avirt_audiopath *)substream->private_data),
+		((struct snd_avirt_audiopath *)substream->private_data),
 		get_time_info, substream, system_ts, audio_ts,
 		audio_tstamp_config, audio_tstamp_report);
 }
@@ -265,8 +265,8 @@ static int pcm_copy_user(struct snd_pcm_substream *substream, int channel,
 
 	// Do additional Audio Path 'copy_user' callback
 	return DO_AUDIOPATH_CB(
-		((struct avirt_audiopath *)substream->private_data), copy_user,
-		substream, channel, pos, src, count);
+		((struct snd_avirt_audiopath *)substream->private_data),
+		copy_user, substream, channel, pos, src, count);
 }
 
 /**
@@ -286,7 +286,7 @@ static int pcm_copy_kernel(struct snd_pcm_substream *substream, int channel,
 			   unsigned long pos, void *buf, unsigned long count)
 {
 	return DO_AUDIOPATH_CB(
-		((struct avirt_audiopath *)substream->private_data),
+		((struct snd_avirt_audiopath *)substream->private_data),
 		copy_kernel, substream, channel, pos, buf, count);
 }
 
@@ -302,7 +302,7 @@ static int pcm_copy_kernel(struct snd_pcm_substream *substream, int channel,
 static int pcm_ack(struct snd_pcm_substream *substream)
 {
 	return DO_AUDIOPATH_CB(
-		((struct avirt_audiopath *)substream->private_data), ack,
+		((struct snd_avirt_audiopath *)substream->private_data), ack,
 		substream);
 }
 
@@ -310,7 +310,7 @@ static int pcm_silence(struct snd_pcm_substream *substream, int channel,
 		       snd_pcm_uframes_t pos, snd_pcm_uframes_t count)
 {
 	return DO_AUDIOPATH_CB(
-		((struct avirt_audiopath *)substream->private_data),
+		((struct snd_avirt_audiopath *)substream->private_data),
 		fill_silence, substream, channel, pos, count);
 }
 

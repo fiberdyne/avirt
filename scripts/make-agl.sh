@@ -9,6 +9,6 @@ sdkpath=${long_sdkpath:4}
 # Build
 /opt/AGL/bin/xds-cli exec --config xds-project.conf --			\
 	LDFLAGS= CONFIG_AVIRT=m CONFIG_AVIRT_BUILDLOCAL=y		\
-	CONFIG_AVIRT_DUMMYAP=m						\
-	CONFIG_AVIRT_LOOPBACKAP=m					\
+	CONFIG_AVIRT_AP_DUMMY=m						\
+	CONFIG_AVIRT_AP_LOOPBACK=m					\
 	make -C $sdkpath/sysroots/aarch64-agl-linux/usr/src/kernel M=$(pwd) $@

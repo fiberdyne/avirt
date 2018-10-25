@@ -14,7 +14,9 @@
 
 #include "utils.h"
 
-struct avirt_core {
+extern struct snd_pcm_ops pcm_ops;
+
+struct snd_avirt_core {
 	struct snd_card *card;
 	struct device *dev;
 	struct class *avirt_class;
@@ -24,44 +26,45 @@ struct avirt_core {
 };
 
 /**
- * __avirt_configfs_init - Initialise the configfs system
- * @core: The avirt_core pointer
+ * snd_avirt_configfs_init - Initialise the configfs system
+ * @core: The snd_avirt_core pointer
  * @return: 0 on success, negative ERRNO on failure
  */
-int __init __avirt_configfs_init(struct avirt_core *core);
+int __init snd_avirt_configfs_init(struct snd_avirt_core *core);
 
 /**
- * __avirt_configfs_exit - Clean up and exit the configfs system
- * @core: The avirt_core pointer
+ * snd_avirt_configfs_exit - Clean up and exit the configfs system
+ * @core: The snd_avirt_core pointer
  */
-void __exit __avirt_configfs_exit(struct avirt_core *core);
+void __exit snd_avirt_configfs_exit(struct snd_avirt_core *core);
 
 /**
- * __avirt_streams_seal - Register the sound card to user space
+ * snd_avirt_streams_seal - Register the sound card to user space
  * @return: 0 on success, negative ERRNO on failure
  */
-int __avirt_streams_seal(void);
+int snd_avirt_streams_seal(void);
 
 /**
- * __avirt_streams_sealed - Check whether the streams have been sealed or not
+ * snd_avirt_streams_sealed - Check if the streams have been sealed or not
  * @return: true if sealed, false otherwise
  */
-bool __avirt_streams_sealed(void);
+bool snd_avirt_streams_sealed(void);
 
 /**
- * __avirt_stream_find_by_device - Get audio stream from device number
+ * snd_avirt_stream_find_by_device - Get audio stream from device number
  * @device: The PCM device number corresponding to the desired stream
  * @return: The audio stream if found, or an error pointer otherwise
  */
-struct avirt_stream *__avirt_stream_find_by_device(unsigned int device);
+struct snd_avirt_stream *snd_avirt_stream_find_by_device(unsigned int device);
 
 /**
- * __avirt_stream_create - Create audio stream, including it's ALSA PCM device
+ * snd_avirt_stream_create - Create audio stream, including it's ALSA PCM device
  * @name: The name designated to the audio stream
  * @direction: The PCM direction (SNDRV_PCM_STREAM_PLAYBACK or
  *             SNDRV_PCM_STREAM_CAPTURE)
  * @return: The newly created audio stream if successful, or an error pointer
  */
-struct avirt_stream *__avirt_stream_create(const char *name, int direction);
+struct snd_avirt_stream *snd_avirt_stream_create(const char *name,
+						 int direction);
 
 #endif /* __SOUND_AVIRT_CORE_H */

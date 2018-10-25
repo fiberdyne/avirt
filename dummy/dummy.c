@@ -34,7 +34,7 @@ MODULE_LICENSE("GPL v2");
 #define get_dummy_ops(substream) \
 	(*(const struct dummy_timer_ops **)(substream)->runtime->private_data)
 
-static struct avirt_coreinfo *coreinfo;
+static struct snd_avirt_coreinfo *coreinfo;
 
 /*******************************************************************************
  * System Timer Interface
@@ -140,7 +140,7 @@ static void dummy_systimer_callback(struct timer_list *t)
 	dpcm->elapsed = 0;
 	spin_unlock_irqrestore(&dpcm->lock, flags);
 	if (elapsed)
-		avirt_pcm_period_elapsed(dpcm->substream);
+		snd_avirt_pcm_period_elapsed(dpcm->substream);
 }
 
 static snd_pcm_uframes_t
@@ -241,18 +241,18 @@ static struct snd_pcm_ops dummyap_pcm_ops = {
 /*******************************************************************************
  * Dummy Audio Path AVIRT registration
  ******************************************************************************/
-int dummy_configure(struct snd_card *card,
-		    struct config_group *avirt_stream_group,
-		    unsigned int stream_count)
+static int dummy_configure(struct snd_card *card,
+			   struct config_group *snd_avirt_stream_group,
+			   unsigned int stream_count)
 {
 	// Do something with streams
 
 	struct list_head *entry;
-	list_for_each (entry, &avirt_stream_group->cg_children) {
+	list_for_each (entry, &snd_avirt_stream_group->cg_children) {
 		struct config_item *item =
 			container_of(entry, struct config_item, ci_entry);
-		struct avirt_stream *stream =
-			avirt_stream_from_config_item(item);
+		struct snd_avirt_stream *stream =
+			snd_avirt_stream_from_config_item(item);
 		AP_INFOK("stream name:%s device:%d channels:%d", stream->name,
 			 stream->device, stream->channels);
 	}
@@ -272,7 +272,7 @@ static struct snd_pcm_hardware dummyap_hw = {
 	.periods_max = DUMMY_PERIODS_MAX,
 };
 
-static struct avirt_audiopath dummyap_module = {
+static struct snd_avirt_audiopath dummyap_module = {
 	.uid = "ap_dummy",
 	.name = "Dummy Audio Path",
 	.version = { 0, 0, 1 },
@@ -287,7 +287,7 @@ static int __init dummy_init(void)
 
 	pr_info("init()\n");
 
-	err = avirt_audiopath_register(&dummyap_module, &coreinfo);
+	err = snd_avirt_audiopath_register(&dummyap_module, &coreinfo);
 	if ((err < 0) || (!coreinfo)) {
 		pr_err("%s: coreinfo is NULL!\n", __func__);
 		return err;
@@ -300,7 +300,7 @@ static void __exit dummy_exit(void)
 {
 	pr_info("exit()\n");
 
-	avirt_audiopath_deregister(&dummyap_module);
+	snd_avirt_audiopath_deregister(&dummyap_module);
 }
 
 module_init(dummy_init);

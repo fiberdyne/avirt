@@ -46,7 +46,7 @@ MODULE_LICENSE("GPL");
 
 #define NO_PITCH 100000
 
-static struct avirt_coreinfo *coreinfo;
+static struct snd_avirt_coreinfo *coreinfo;
 static struct loopback *loopback;
 
 struct loopback_pcm;
@@ -509,7 +509,7 @@ static void loopback_timer_function(struct timer_list *t)
 			dpcm->period_update_pending = 0;
 			spin_unlock_irqrestore(&dpcm->cable->lock, flags);
 			/* need to unlock before calling below */
-			avirt_pcm_period_elapsed(dpcm->substream);
+			snd_avirt_pcm_period_elapsed(dpcm->substream);
 			return;
 		}
 	}
@@ -529,7 +529,7 @@ static snd_pcm_uframes_t loopback_pointer(struct snd_pcm_substream *substream)
 	return bytes_to_frames(runtime, pos);
 }
 
-static const struct snd_pcm_hardware loopback_pcm_hardware = {
+static const struct snd_pcm_hardware loopbackap_pcm_hardware = {
 	.info = (SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_MMAP |
 		 SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_PAUSE |
 		 SNDRV_PCM_INFO_RESUME),
@@ -661,7 +661,7 @@ static int loopback_open(struct snd_pcm_substream *substream)
 			goto unlock;
 		}
 		spin_lock_init(&cable->lock);
-		cable->hw = loopback_pcm_hardware;
+		cable->hw = loopbackap_pcm_hardware;
 		loopback->cables[substream->pcm->device] = cable;
 	}
 	dpcm->cable = cable;
@@ -689,7 +689,7 @@ static int loopback_open(struct snd_pcm_substream *substream)
 	runtime->private_data = dpcm;
 	runtime->private_free = loopback_runtime_free;
 	if (get_notify(dpcm))
-		runtime->hw = loopback_pcm_hardware;
+		runtime->hw = loopbackap_pcm_hardware;
 	else
 		runtime->hw = cable->hw;
 
@@ -936,7 +936,7 @@ static int loopback_mixer_new(struct loopback *loopback, int notify)
 	int dev, dev_count, idx, err;
 
 	strcpy(card->mixername, "Loopback Mixer");
-	dev_count = avirt_stream_count(SNDRV_PCM_STREAM_PLAYBACK);
+	dev_count = snd_avirt_stream_count(SNDRV_PCM_STREAM_PLAYBACK);
 	for (dev = 0; dev < dev_count; dev++) {
 		pcm = loopback->pcm[dev];
 		setup = &loopback->setup[dev];
@@ -1043,9 +1043,9 @@ static int loopback_proc_new(struct loopback *loopback, int cidx)
 	return 0;
 }
 
-int loopbackap_configure(struct snd_card *card,
-			 struct config_group *avirt_stream_group,
-			 unsigned int stream_count)
+static int loopbackap_configure(struct snd_card *card,
+				struct config_group *snd_avirt_stream_group,
+				unsigned int stream_count)
 {
 	int err;
 	struct list_head *entry;
@@ -1056,11 +1056,11 @@ int loopbackap_configure(struct snd_card *card,
 	loopback->card = card;
 	mutex_init(&loopback->cable_lock);
 
-	list_for_each (entry, &avirt_stream_group->cg_children) {
+	list_for_each (entry, &snd_avirt_stream_group->cg_children) {
 		struct config_item *item =
 			container_of(entry, struct config_item, ci_entry);
-		struct avirt_stream *stream =
-			avirt_stream_from_config_item(item);
+		struct snd_avirt_stream *stream =
+			snd_avirt_stream_from_config_item(item);
 		loopback->pcm[stream->device] = stream->pcm;
 
 		AP_INFOK("stream name:%s device:%d channels:%d", stream->name,
@@ -1080,11 +1080,11 @@ int loopbackap_configure(struct snd_card *card,
 /*******************************************************************************
  * Loopback Audio Path AVIRT registration
  ******************************************************************************/
-static struct avirt_audiopath loopbackap_module = {
+static struct snd_avirt_audiopath loopbackap_module = {
 	.uid = AP_UID,
 	.name = "Loopback Audio Path",
 	.version = { 0, 0, 1 },
-	.hw = &loopback_pcm_hardware,
+	.hw = &loopbackap_pcm_hardware,
 	.pcm_ops = &loopbackap_pcm_ops,
 	.configure = loopbackap_configure,
 };
@@ -1093,7 +1093,7 @@ static int __init alsa_card_loopback_init(void)
 {
 	int err = 0;
 
-	err = avirt_audiopath_register(&loopbackap_module, &coreinfo);
+	err = snd_avirt_audiopath_register(&loopbackap_module, &coreinfo);
 	if ((err < 0) || (!coreinfo)) {
 		AP_ERRORK("coreinfo is NULL!");
 		return err;
@@ -1104,7 +1104,7 @@ static int __init alsa_card_loopback_init(void)
 
 static void __exit alsa_card_loopback_exit(void)
 {
-	avirt_audiopath_deregister(&loopbackap_module);
+	snd_avirt_audiopath_deregister(&loopbackap_module);
 }
 
 module_init(alsa_card_loopback_init);

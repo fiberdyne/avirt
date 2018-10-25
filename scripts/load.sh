@@ -1,11 +1,11 @@
 #!/bin/sh
 
 # Load the core
-insmod avirt_core.ko
+insmod snd-avirt-core.ko
 
 # Load the additional Audio Paths
-insmod dummy/avirt_dummyap.ko
-insmod loopback/avirt_loopbackap.ko
+insmod dummy/snd-avirt-ap-dummy.ko
+insmod loopback/snd-avirt-ap-loopback.ko
 
 # Run the test script
 ./scripts/test_configfs.sh
